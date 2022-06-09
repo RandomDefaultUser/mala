@@ -256,7 +256,7 @@ class ParametersNetwork(ParametersBase):
         self.num_heads = 10
 
         # For Electronic Temp net.
-        self.kernel_size = 0
+        self.kernel_size = 1
         self.number_of_channels = 0
 
     @property
