@@ -553,7 +553,6 @@ class Trainer(Runner):
                                                    self.data.nr_training_snapshots+batchid))
                     validation_loss.append(network.calculate_loss(prediction, y)
                                            .item())
-            print(validation_loss)
             return np.mean(validation_loss)
         elif validation_type == "band_energy":
             # Get optimal batch size and number of batches per snapshots.

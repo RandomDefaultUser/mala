@@ -294,24 +294,24 @@ class ElectronicTemperatureAdapter(Network):
                                                        self.params.kernel_size,
                                                        self.params.kernel_size),
                                           # padding=int(self.params.kernel_size/2),
-                                          padding=1,
+                                          padding="same",
                                           stride=1,
                                           bias=False,
                                           groups=self.params.number_of_channels)
 
         # Initialize to reproduce input data.
         with torch.no_grad():
-            self.conv_layer.weight[:, :, :, :, :] = 0
-            self.conv_layer.weight[:, :, 1, 1, 1] = 1
-
-        self._prediction_temperature = None
+            mid = self.params.kernel_size // 2
+            init1 = 0.0
+            init2 = 1-(self.params.kernel_size*self.params.kernel_size*
+                       self.params.kernel_size*init1)
+            self.conv_layer.weight[:, :, :, :, :] = init1
+            self.conv_layer.weight[:, :, mid, mid, mid] = init2
 
     def forward(self, inputs, temperature=None):
-        out = self.conv_layer(inputs*temperature)/temperature
-        return out
+        out = self.conv_layer(inputs)
 
-    def predict_at_temperature(self, temperatureK):
-        self._prediction_temperature = temperatureK
+        return out
 
 
 class LSTM(Network):

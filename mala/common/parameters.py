@@ -259,6 +259,19 @@ class ParametersNetwork(ParametersBase):
         self.kernel_size = 0
         self.number_of_channels = 0
 
+    @property
+    def kernel_size(self):
+        return self._kernel_size
+
+    @kernel_size.setter
+    def kernel_size(self, value):
+        if value % 2 == 0:
+            printout("Adjusting kernel size from", value, "to", value+1)
+            self._kernel_size = value+1
+        else:
+            self._kernel_size = value
+
+
 
 class ParametersDescriptors(ParametersBase):
     """
