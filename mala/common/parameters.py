@@ -266,7 +266,8 @@ class ParametersNetwork(ParametersBase):
     @kernel_size.setter
     def kernel_size(self, value):
         if value % 2 == 0:
-            printout("Adjusting kernel size from", value, "to", value+1)
+            printout("Adjusting kernel size from", value, "to", value+1,
+                     min_verbosity=2)
             self._kernel_size = value+1
         else:
             self._kernel_size = value
