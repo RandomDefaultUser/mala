@@ -41,6 +41,12 @@ class Descriptor(ABC):
                 from mala.descriptors.snap import SNAP
                 descriptors = super(Descriptor, SNAP).__new__(SNAP)
 
+            if params.descriptors.descriptor_type == "LDOS" or \
+                params.descriptors.descriptor_type == "DOS" or \
+                params.descriptors.descriptor_type == "Density":
+                from mala.descriptors.target_descriptor import TargetDescriptor
+                descriptors = super(Descriptor, TargetDescriptor).__new__(TargetDescriptor)
+
             if descriptors is None:
                 raise Exception("Unsupported descriptor calculator.")
         else:

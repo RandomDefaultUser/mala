@@ -265,7 +265,8 @@ class Trainer(Runner):
                 inputs = inputs.to(self.parameters._configuration["device"])
                 outputs = outputs.to(self.parameters._configuration["device"])
                 training_loss += self.__process_mini_batch(self.network,
-                                                           inputs, outputs)
+                                                           inputs, outputs,
+                                                           batchid)
 
             # Calculate the validation loss. and output it.
             vloss = self.__validate_network(self.network,
@@ -501,9 +502,16 @@ class Trainer(Runner):
                                                sampler=self.test_sampler,
                                                **kwargs)
 
-    def __process_mini_batch(self, network, input_data, target_data):
+    def __process_mini_batch(self, network, input_data, target_data,
+                             batchid):
         """Process a mini batch."""
-        prediction = network(input_data)
+        if self.parameters_full.network.nn_type != \
+                "electronic_temperature_adapter":
+            prediction = network(input_data)
+        else:
+            prediction = \
+                network(input_data, temperature=self.data.
+                        get_snapshot_temperature(batchid))
         loss = network.calculate_loss(prediction, target_data)
         loss.backward()
         self.optimizer.step()
@@ -532,13 +540,20 @@ class Trainer(Runner):
         if validation_type == "ldos":
             validation_loss = []
             with torch.no_grad():
-                for x, y in data_loader:
+                for batchid, (x, y) in enumerate(data_loader):
                     x = x.to(self.parameters._configuration["device"])
                     y = y.to(self.parameters._configuration["device"])
-                    prediction = network(x)
+                    if self.parameters_full.network.nn_type != \
+                            "electronic_temperature_adapter":
+                        prediction = network(x)
+                    else:
+                        prediction = \
+                            network(x, temperature=self.data.
+                                            get_snapshot_temperature(
+                                                   self.data.nr_training_snapshots+batchid))
                     validation_loss.append(network.calculate_loss(prediction, y)
                                            .item())
-
+            print(validation_loss)
             return np.mean(validation_loss)
         elif validation_type == "band_energy":
             # Get optimal batch size and number of batches per snapshots.

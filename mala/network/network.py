@@ -61,6 +61,10 @@ class Network(nn.Module):
             elif params.network.nn_type == "gru":
                 model = super(Network, GRU).__new__(GRU)
 
+            elif params.network.nn_type == "electronic_temperature_adapter":
+                model = super(Network, ElectronicTemperatureAdapter).\
+                    __new__(ElectronicTemperatureAdapter)
+
             if model is None:
                 raise Exception("Unsupported network architecture.")
         else:
@@ -99,7 +103,6 @@ class Network(nn.Module):
             self.loss_func = functional.mse_loss
         else:
             raise Exception("Unsupported loss function.")
-
 
     @abstractmethod
     def forward(self, inputs):
@@ -270,6 +273,46 @@ class FeedForwardNet(Network):
         for layer in self.layers:
             inputs = layer(inputs)
         return inputs
+
+
+class ElectronicTemperatureAdapter(Network):
+    """
+    Temperature filter that learns differences in electronic temperature.
+
+    Has to be used in combination with a general SNAP->LDOS network.
+    The simple feedforward network makes sure that the LDOS is predicted
+    correctly from the SNAP positions. This network afterwards only ensures
+    that the ELECTRONIC temperature is corrected. I.e., differences purely
+    in ionic temperature are discarded.
+    """
+
+    def __init__(self, params):
+        super(ElectronicTemperatureAdapter, self).__init__(params)
+        self.conv_layer = torch.nn.Conv3d(self.params.number_of_channels,
+                                          self.params.number_of_channels,
+                                          kernel_size=(self.params.kernel_size,
+                                                       self.params.kernel_size,
+                                                       self.params.kernel_size),
+                                          # padding=int(self.params.kernel_size/2),
+                                          padding=1,
+                                          stride=1,
+                                          bias=False,
+                                          groups=self.params.number_of_channels)
+
+        # Initialize to reproduce input data.
+        with torch.no_grad():
+            self.conv_layer.weight[:, :, :, :, :] = 0
+            self.conv_layer.weight[:, :, 1, 1, 1] = 1
+
+        self._prediction_temperature = None
+
+    def forward(self, inputs, temperature=None):
+        out = self.conv_layer(inputs*temperature)/temperature
+        return out
+
+    def predict_at_temperature(self, temperatureK):
+        self._prediction_temperature = temperatureK
+
 
 class LSTM(Network):
     """Initialize this network as a LSTM network."""

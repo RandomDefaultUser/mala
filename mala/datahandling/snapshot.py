@@ -51,7 +51,7 @@ class Snapshot(JSONSerializable):
                  output_npy_file,  output_npy_directory,
                  snapshot_function,
                  input_units="", output_units="",
-                 calculation_output=""):
+                 calculation_output="", temperature=None):
         super(Snapshot, self).__init__()
 
         # Inputs.
@@ -69,6 +69,11 @@ class Snapshot(JSONSerializable):
 
         # Function of the snapshot.
         self.snapshot_function = snapshot_function
+
+        # Temperature the snapshot was calculated at.
+        # Only important for training the temperature improvement
+        # models.
+        self.temperature = temperature
 
     @classmethod
     def from_json(cls, json_dict):

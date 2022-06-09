@@ -255,6 +255,11 @@ class ParametersNetwork(ParametersBase):
         self.dropout = 0.1
         self.num_heads = 10
 
+        # For Electronic Temp net.
+        self.kernel_size = 0
+        self.number_of_channels = 0
+
+
 class ParametersDescriptors(ParametersBase):
     """
     Parameters necessary for calculating/parsing input descriptors.
@@ -468,6 +473,13 @@ class ParametersData(ParametersBase):
     sample_ratio : float
         If use_clustering is True, this is the ratio of training data used
         for sampling per snapshot (according to clustering then, of course).
+
+    data_dimensions : string
+        Can be either "3d" or "1d" (default). If "1d", volumetric
+        data is rearranged into one long list of feature vectors. This is
+        needed for training regular feed-forward NNs. If "3d", spatial
+        structure is observed. With this, e.g. temperature-aware CNNs
+        can be used.
     """
 
     def __init__(self):
@@ -482,6 +494,30 @@ class ParametersData(ParametersBase):
         self.number_of_clusters = 40
         self.train_ratio = 0.1
         self.sample_ratio = 0.5
+        self.data_dimensions = "1d"
+
+    @property
+    def data_dimensions(self):
+        """
+        Control how data is stored internally.
+
+        Can be either "3d" or "1d" (default). If "1d", volumetric
+        data is rearranged into one long list of feature vectors. This is
+        needed for training regular feed-forward NNs. If "3d", spatial
+        structure is observed. With this, e.g. temperature-aware CNNs
+        can be used.
+        """
+        return self._data_dimensions
+
+    @data_dimensions.setter
+    def data_dimensions(self, value):
+        if value != "1d" and value != "3d":
+            warnings.warn("Currently data handling can only be 1d or 3d. "
+                          "Unknown option detected, resetting it to 1d "
+                          "(default)")
+            self._data_dimensions = "1d"
+        else:
+            self._data_dimensions = value
 
 
 class ParametersRunning(ParametersBase):
@@ -551,9 +587,6 @@ class ParametersRunning(ParametersBase):
 
     num_workers : int
         Number of workers to be used for data loading.
-
-    sampler : dict
-        Dictionary with samplers.
 
     use_shuffling_for_samplers :
         If True, the training data will be shuffled in between epochs.
