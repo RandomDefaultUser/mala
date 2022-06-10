@@ -180,7 +180,7 @@ class Predictor(Runner):
                 torch.from_numpy(input_array).float()
             input_array = \
                 self.data.input_data_scaler.transform(input_array)
-
+            input_array = input_array.to(self.parameters._configuration["device"])
             # Pass input array through the network.
             predicted_outputs = self.network(input_array)
 
