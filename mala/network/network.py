@@ -309,7 +309,7 @@ class ElectronicTemperatureAdapter(Network):
             self.conv_layer.weight[:, :, mid, mid, mid] = init2
 
         # Move to device.
-        self.conv_layer.to(self.params._confguration["device"])
+        self.conv_layer.to(self.params._configuration["device"])
 
     def forward(self, inputs, temperature=None):
         out = self.conv_layer(inputs)

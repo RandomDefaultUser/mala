@@ -53,6 +53,7 @@ class DataHandler:
         self.parameters: ParametersData = parameters.data
         self.dbg_grid_dimensions = parameters.debug.grid_dimensions
         self.use_horovod = parameters.use_horovod
+
         self.training_data_set = None
 
         self.validation_data_set = None
@@ -477,6 +478,10 @@ class DataHandler:
             # We need to make sure that snapshot size is consistent.
             tmp_input_dimension = np.shape(tmp)[-1]
             tmp_grid_dim = np.shape(tmp)[0:3]
+
+            if self.parameters.add_temperature_to_data:
+                tmp_input_dimension += 1
+
             if firstsnapshot:
                 self.input_dimension = tmp_input_dimension
                 self.grid_dimension[0:3] = tmp_grid_dim[0:3]
@@ -698,6 +703,10 @@ class DataHandler:
                                                 mmapmode='r')
                 if self.descriptor_calculator.descriptors_contain_xyz:
                     tmp = tmp[:, :, :, 3:]
+                if self.parameters.add_temperature_to_data:
+                    tmp = np.concatenate((tmp, (np.zeros_like(tmp[:,:,:,0:1]) +
+                                                snapshot.temperature)), -1)
+
                 if self.parameters.data_dimensions == "3d":
                     tmp = np.array(tmp).transpose([3, 0, 1, 2])
                 else:
@@ -849,6 +858,9 @@ class DataHandler:
                                              mmapmode='r')
                     if self.descriptor_calculator.descriptors_contain_xyz:
                         tmp = tmp[:, :, :, 3:]
+                    if self.parameters.add_temperature_to_data:
+                        tmp = np.concatenate((tmp, (np.zeros_like(tmp[:,:,:,0:1]) +
+                                                    snapshot.temperature)), -1)
                     if self.parameters.data_dimensions == "3d":
                         tmp = np.array(tmp).transpose([3, 0, 1, 2])
                     else:

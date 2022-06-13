@@ -168,7 +168,7 @@ class Predictor(Runner):
             return self.\
                         _forward_snap_descriptors(snap_descriptors)
 
-    def predict_from_array(self, input_array):
+    def predict_from_array(self, input_array, temperature=None):
         if self.parameters_full.network.nn_type == \
             "electronic_temperature_adapter":
             # Convert array to pytorch.
@@ -181,14 +181,32 @@ class Predictor(Runner):
             input_array = \
                 self.data.input_data_scaler.transform(input_array)
 
-            # Pass input array through the network.
-            predicted_outputs = self.network(input_array)
+            # Transform outputs.
+            predicted_outputs = self.data.output_data_scaler.\
+                    inverse_transform(self.network(input_array).
+                                      to('cpu'), as_numpy=True)[0]
+            predicted_outputs = predicted_outputs.transpose(1, 2, 3, 0)
+            return predicted_outputs
+        else:
+
+            if temperature is not None:
+                input_array = np.concatenate((input_array, (np.zeros_like(input_array[:, :, :, 0:1]) + temperature)), -1)
+
+            input_array = \
+                input_array.astype(np.float32)
+            input_array = \
+                input_array.reshape(
+                    [input_array.shape[0]*input_array.shape[1]*input_array.shape[2], input_array.shape[-1]])
+
+            input_array = \
+                torch.from_numpy(input_array).float()
+            input_array = \
+                self.data.input_data_scaler.transform(input_array)
 
             # Transform outputs.
             predicted_outputs = self.data.output_data_scaler.\
-                    inverse_transform(self.network(predicted_outputs).
-                                      to('cpu'), as_numpy=True)[0]
-            predicted_outputs = predicted_outputs.transpose(1, 2, 3, 0)
+                    inverse_transform(self.network(input_array).
+                                      to('cpu'), as_numpy=True)
             return predicted_outputs
 
 
