@@ -180,6 +180,8 @@ class Predictor(Runner):
                 torch.from_numpy(input_array).float()
             input_array = \
                 self.data.input_data_scaler.transform(input_array)
+            input_array = input_array.to(self.parameters._configuration["device"])
+
 
             # Transform outputs.
             predicted_outputs = self.data.output_data_scaler.\
@@ -202,14 +204,13 @@ class Predictor(Runner):
                 torch.from_numpy(input_array).float()
             input_array = \
                 self.data.input_data_scaler.transform(input_array)
+            input_array = input_array.to(self.parameters._configuration["device"])
 
             # Transform outputs.
             predicted_outputs = self.data.output_data_scaler.\
                     inverse_transform(self.network(input_array).
                                       to('cpu'), as_numpy=True)
             return predicted_outputs
-
-
 
     def _forward_snap_descriptors(self, snap_descriptors,
                                   local_data_size=None):
