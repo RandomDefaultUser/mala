@@ -277,6 +277,8 @@ class Trainer(Runner):
                 vloss = self.__average_validation(vloss, 'average_loss')
             printout("Epoch: ", epoch, "validation data loss: ", vloss,
                      min_verbosity=1)
+            printout("Training data loss: {0}".format(training_loss),
+                     min_verbosity=2)
 
             # summary_writer tensor board
             if self.parameters.visualisation:
