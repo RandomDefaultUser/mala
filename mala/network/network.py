@@ -1,9 +1,11 @@
 """Neural network for MALA."""
 from abc import abstractmethod
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
+from torch.nn.utils import prune
 
 from mala.common.parameters import Parameters
 from mala.common.parallelizer import printout
@@ -12,9 +14,6 @@ try:
 except ModuleNotFoundError:
     # Warning is thrown by parameters class
     pass
-import torch
-import torch.nn as nn
-import torch.nn.functional as functional
 
 
 class Network(nn.Module):
@@ -171,6 +170,14 @@ class Network(nn.Module):
         torch.save(self.state_dict(), path_to_file,
                    _use_new_zipfile_serialization=False)
 
+    def prune_weights(self, amount):
+        parameters_list = self._get_weights_list()
+        prune.global_unstructured(parameters_list,
+                                  pruning_method=prune.L1Unstructured,
+                                  amount=amount)
+        for pruned_parameter in parameters_list:
+            prune.remove(pruned_parameter[0], pruned_parameter[1])
+
     @classmethod
     def load_from_file(cls, params, path_to_file):
         """
@@ -202,13 +209,20 @@ class Network(nn.Module):
         loaded_network.eval()
         return loaded_network
 
+    def _get_weights_list(self):
+        """
+        Get the list of all trainable weights.
+
+
+        Returns
+        -------
+        weight_list : list
+        """
+        pass
+
 
 class FeedForwardNet(Network):
     """Initialize this network as a feed-forward network."""
-
-        # Check if multiple types of activations were selected or only one
-        # was passed to be used in the entire network.#
-        # If multiple layers have been passed, their size needs to be correct.
 
     def __init__(self, params):
         super(FeedForwardNet, self).__init__(params)
@@ -270,6 +284,21 @@ class FeedForwardNet(Network):
         for layer in self.layers:
             inputs = layer(inputs)
         return inputs
+
+    def _get_weights_list(self):
+        """
+        Get the list of all trainable weights.
+
+
+        Returns
+        -------
+        weight_list : list
+        """
+        weight_list = []
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                weight_list.append([layer, 'weight'])
+        return weight_list
 
 class LSTM(Network):
     """Initialize this network as a LSTM network."""
@@ -469,6 +498,7 @@ class GRU(LSTM):
 
         return h0
 
+
 class TransformerNet(Network):
     """Initialize this network as the transformer net.
 
@@ -520,12 +550,14 @@ class TransformerNet(Network):
         return mask
 
     def init_weights(self):
-        """Initialise weights with a uniform random distribution in the range (-initrange, initrange)."""
+        """
+        Initialise weights with a uniform random distribution in the range
+        (-initrange, initrange).
+        """
         initrange = 0.1
     #        self.encoder.weight.data.uniform_(-initrange, initrange)
         self.decoder.bias.data.zero_()
         self.decoder.weight.data.uniform_(-initrange, initrange)
-
 
     def forward(self, x):
         """Perform a forward pass through the network."""
@@ -540,6 +572,7 @@ class TransformerNet(Network):
         output = self.decoder(output)
         output= output.squeeze(dim=1)
         return output
+
 
 class PositionalEncoding(nn.Module):
     """Injects some information of relative/absolute position of token in a sequence.
