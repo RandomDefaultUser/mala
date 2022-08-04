@@ -477,11 +477,35 @@ class ParametersData(ParametersBase):
         self.data_splitting_type = "by_snapshot"
         self.input_rescaling_type = "None"
         self.output_rescaling_type = "None"
+        self._use_lazy_loading = False
+        self._lazy_loading_max_number_of_points = None
         self.use_lazy_loading = False
+        self.lazy_loading_max_number_of_points = None
         self.use_clustering = False
         self.number_of_clusters = 40
         self.train_ratio = 0.1
         self.sample_ratio = 0.5
+
+    @property
+    def use_lazy_loading(self):
+        return self._use_lazy_loading
+
+    @use_lazy_loading.setter
+    def use_lazy_loading(self, value):
+        if value is False:
+            self.lazy_loading_max_number_of_points = None
+        self._use_lazy_loading = value
+
+    @property
+    def lazy_loading_max_number_of_points(self):
+        return self._lazy_loading_max_number_of_points
+
+    @lazy_loading_max_number_of_points.setter
+    def lazy_loading_max_number_of_points(self, value):
+        if self.use_lazy_loading is False:
+            return
+        else:
+            self._lazy_loading_max_number_of_points = value
 
 
 class ParametersRunning(ParametersBase):
