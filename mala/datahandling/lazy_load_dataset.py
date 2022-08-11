@@ -119,7 +119,7 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         self.snapshot_list = [self.snapshot_list[i] for i in used_perm]
         self.get_new_data(0)
 
-    def get_new_data(self, file_index):
+    def get_new_data(self, file_index, chunk_index=None):
         """
         Read a new snapshot into RAM.
 
@@ -129,14 +129,29 @@ class LazyLoadDataset(torch.utils.data.Dataset):
             File to be read.
         """
         # Load the data into RAM.
-        self.input_data = \
-            np.load(os.path.join(
-                    self.snapshot_list[file_index].input_npy_directory,
-                    self.snapshot_list[file_index].input_npy_file))
-        self.output_data = \
-            np.load(os.path.join(
-                    self.snapshot_list[file_index].output_npy_directory,
-                    self.snapshot_list[file_index].output_npy_file))
+        if self.chunk_size is None:
+            self.input_data = \
+                np.load(os.path.join(
+                        self.snapshot_list[file_index].input_npy_directory,
+                        self.snapshot_list[file_index].input_npy_file))
+            self.output_data = \
+                np.load(os.path.join(
+                        self.snapshot_list[file_index].output_npy_directory,
+                        self.snapshot_list[file_index].output_npy_file))
+        else:
+            self.input_data = \
+                np.load(os.path.join(
+                        self.snapshot_list[file_index].input_npy_directory,
+                        self.snapshot_list[file_index].input_npy_file),
+                        mmap_mode="r")
+            self.output_data = \
+                np.load(os.path.join(
+                        self.snapshot_list[file_index].output_npy_directory,
+                        self.snapshot_list[file_index].output_npy_file),
+                        mmap_mode="r")
+            chunk_begin = self.chunk_size*chunk_index
+            chunk_end = np.min(self.chunk_size*(chunk_index+1),
+                               self.snapshot_list[file_index].grid_size)
 
         # Transform the data.
         if self.descriptors_contain_xyz:
@@ -144,6 +159,9 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         self.input_data = \
             self.input_data.reshape([self.snapshot_list[file_index].grid_size,
                                      self.input_dimension])
+        if self.chunk_size is not None:
+            self.input_data = self.input_data[chunk_begin:chunk_end, :].copy()
+
         self.input_data *= \
             self.descriptor_calculator.\
             convert_units(1, self.snapshot_list[file_index].input_units)
@@ -155,6 +173,10 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         self.output_data = \
             self.output_data.reshape([self.snapshot_list[file_index].grid_size,
                                       self.output_dimension])
+
+        if self.chunk_size is not None:
+            self.output_data = self.output_data[chunk_begin:chunk_end, :].copy()
+
         self.output_data *= \
             self.target_calculator.\
             convert_units(1, self.snapshot_list[file_index].output_units)
@@ -167,6 +189,7 @@ class LazyLoadDataset(torch.utils.data.Dataset):
 
         # Save which data we have currently loaded.
         self.currently_loaded_file = file_index
+        self.currently_loaded_chunk = chunk_index
 
     def _get_file_index(self, idx, is_slice=False):
         file_index = None
@@ -216,22 +239,24 @@ class LazyLoadDataset(torch.utils.data.Dataset):
 
             # Find out if new data is needed.
             if file_index != self.currently_loaded_file:
-                self.get_new_data(file_index, chunk_index)
-            if self.chunk_size is not None:
-                if chunk_index != self.currently_loaded_chunk:
-                    self.get_new_data(file_index, chunk_index)
-                return self.input_data[index_in_chunk], \
-                       self.output_data[index_in_chunk]
+                self.get_new_data(file_index)
             else:
-                return self.input_data[index_in_file], \
-                    self.output_data[index_in_file]
+                if self.chunk_size is not None:
+                    if chunk_index != self.currently_loaded_chunk:
+                        self.get_new_data(file_index, chunk_index=chunk_index)
+                    return self.input_data[index_in_chunk], \
+                           self.output_data[index_in_chunk]
+            return self.input_data[index_in_file], \
+                self.output_data[index_in_file]
 
         elif isinstance(idx, slice):
             # If a slice is requested, we have to find out if it spans files.
-            file_index_start, index_in_file_start = self.\
-                _get_file_index(idx.start, is_slice=True)
-            file_index_stop, index_in_file_stop = self.\
-                _get_file_index(idx.stop, is_slice=True)
+            file_index_start, index_in_file_start, \
+            chunk_index_start, index_in_chunk_start \
+                = self._get_file_index(idx.start, is_slice=True)
+            file_index_stop, index_in_file_stop, \
+            chunk_index_stop, index_in_chunk_stop \
+                = self._get_file_index(idx.stop, is_slice=True)
 
             # If it does, we cannot deliver.
             # Take care though, if a full snapshot is requested,
@@ -246,10 +271,28 @@ class LazyLoadDataset(torch.utils.data.Dataset):
                                     "You have requested a slice over two "
                                     "files.")
 
+            # The same goes for slices that go over the chunk.
+            if chunk_index_start != chunk_index_stop:
+                if index_in_chunk_stop == 0:
+                    index_in_chunk_stop = self.chunk_size
+                else:
+                    raise Exception("Lazy loading currently only supports "
+                                    "slices in one chunk. "
+                                    "You have requested a slice over two "
+                                    "chunks. You can circumvent this "
+                                    "error by deactivating chunking.")
+
             # Find out if new data is needed.
             file_index = file_index_start
             if file_index != self.currently_loaded_file:
                 self.get_new_data(file_index)
+            else:
+                if self.chunk_size is not None:
+                    if chunk_index_start != self.currently_loaded_chunk:
+                        self.get_new_data(file_index, chunk_index=chunk_index_start)
+                    return self.input_data[index_in_chunk_start:index_in_chunk_stop], \
+                           self.output_data[index_in_chunk_start:index_in_chunk_stop]
+
             return self.input_data[index_in_file_start:index_in_file_stop], \
                 self.output_data[index_in_file_start:index_in_file_stop]
 
