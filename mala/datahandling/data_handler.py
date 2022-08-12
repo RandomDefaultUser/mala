@@ -702,12 +702,14 @@ class DataHandler:
                     self.input_dimension, self.output_dimension,
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
-                    self.use_horovod)
+                    self.use_horovod, size_loaded_chunks=self.parameters.
+                    lazy_loading_max_number_of_points)
                 self.validation_data_set = LazyLoadDataset(
                     self.input_dimension, self.output_dimension,
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
-                    self.use_horovod)
+                    self.use_horovod, size_loaded_chunks=self.parameters.
+                    lazy_loading_max_number_of_points)
 
                 if self.nr_test_data != 0:
                     self.test_data_set = LazyLoadDataset(
@@ -715,7 +717,9 @@ class DataHandler:
                         self.input_data_scaler, self.output_data_scaler,
                         self.descriptor_calculator, self.target_calculator,
                         self.use_horovod,
-                        input_requires_grad=True)
+                        input_requires_grad=True,
+                        size_loaded_chunks=self.parameters.
+                        lazy_loading_max_number_of_points)
 
             # Add snapshots to the lazy loading data sets.
             for snapshot in self.parameters.snapshot_directories_list:

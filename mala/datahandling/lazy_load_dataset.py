@@ -117,7 +117,10 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         if self.use_horovod:
             used_perm = hvd.broadcast(used_perm, 0)
         self.snapshot_list = [self.snapshot_list[i] for i in used_perm]
-        self.get_new_data(0)
+        if self.chunk_size is None:
+            self.get_new_data(0)
+        else:
+            self.get_new_data(0, chunk_index=0)
 
     def get_new_data(self, file_index, chunk_index=None):
         """
@@ -149,9 +152,11 @@ class LazyLoadDataset(torch.utils.data.Dataset):
                         self.snapshot_list[file_index].output_npy_directory,
                         self.snapshot_list[file_index].output_npy_file),
                         mmap_mode="r")
+            if chunk_index is None:
+                print("WTF?")
             chunk_begin = self.chunk_size*chunk_index
-            chunk_end = np.min(self.chunk_size*(chunk_index+1),
-                               self.snapshot_list[file_index].grid_size)
+            chunk_end = np.min([self.chunk_size*(chunk_index+1),
+                                self.snapshot_list[file_index].grid_size])
 
         # Transform the data.
         if self.descriptors_contain_xyz:
@@ -203,8 +208,9 @@ class LazyLoadDataset(torch.utils.data.Dataset):
                     break
                 else:
                     index_in_file -= self.snapshot_list[i].grid_size
-            chunk_index = int(np.floor(index_in_file / self.chunk_size))
-            index_in_chunk = index_in_file - chunk_index*self.chunk_size
+            if self.chunk_size is not None:
+                chunk_index = int(np.floor(index_in_file / self.chunk_size))
+                index_in_chunk = index_in_file - chunk_index*self.chunk_size
             return file_index, index_in_file, chunk_index, index_in_chunk
         else:
             for i in range(len(self.snapshot_list)):
@@ -213,8 +219,9 @@ class LazyLoadDataset(torch.utils.data.Dataset):
                     break
                 else:
                     index_in_file -= self.snapshot_list[i].grid_size
-            chunk_index = int(np.floor(index_in_file / self.chunk_size))
-            index_in_chunk = index_in_file - chunk_index*self.chunk_size
+            if self.chunk_size is not None:
+                chunk_index = int(np.floor(index_in_file / self.chunk_size))
+                index_in_chunk = index_in_file - chunk_index*self.chunk_size
             return file_index, index_in_file, chunk_index, index_in_chunk
 
     def __getitem__(self, idx):
@@ -239,7 +246,7 @@ class LazyLoadDataset(torch.utils.data.Dataset):
 
             # Find out if new data is needed.
             if file_index != self.currently_loaded_file:
-                self.get_new_data(file_index)
+                self.get_new_data(file_index, chunk_index=chunk_index)
             else:
                 if self.chunk_size is not None:
                     if chunk_index != self.currently_loaded_chunk:
@@ -273,7 +280,8 @@ class LazyLoadDataset(torch.utils.data.Dataset):
 
             # The same goes for slices that go over the chunk.
             if chunk_index_start != chunk_index_stop:
-                if index_in_chunk_stop == 0:
+                if index_in_chunk_stop == 0 and chunk_index_stop-1 == \
+                        chunk_index_start:
                     index_in_chunk_stop = self.chunk_size
                 else:
                     raise Exception("Lazy loading currently only supports "
@@ -285,7 +293,7 @@ class LazyLoadDataset(torch.utils.data.Dataset):
             # Find out if new data is needed.
             file_index = file_index_start
             if file_index != self.currently_loaded_file:
-                self.get_new_data(file_index)
+                self.get_new_data(file_index, chunk_index=chunk_index_start)
             else:
                 if self.chunk_size is not None:
                     if chunk_index_start != self.currently_loaded_chunk:

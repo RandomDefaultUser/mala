@@ -507,6 +507,38 @@ class ParametersData(ParametersBase):
         else:
             self._lazy_loading_max_number_of_points = value
 
+    @classmethod
+    def from_json(cls, json_dict):
+        """
+        Read this object from a dictionary saved in a JSON file.
+
+        Special function here because some values can only be set AFTER
+        lazy loading has been determined.
+
+        Parameters
+        ----------
+        json_dict : dict
+            A dictionary containing all attributes, properties, etc. as saved
+            in the json file.
+
+        Returns
+        -------
+        deserialized_object : JSONSerializable
+            The object as read from the JSON file.
+
+        """
+        lazy_loading_max_number_of_points = None
+        try:
+            lazy_loading_max_number_of_points = \
+                json_dict["lazy_loading_max_number_of_points"]
+        except KeyError:
+            pass
+        deserialized_object = super().from_json(json_dict)
+        if lazy_loading_max_number_of_points is not None:
+            deserialized_object.lazy_loading_max_number_of_points = \
+                lazy_loading_max_number_of_points
+        return deserialized_object
+
 
 class ParametersRunning(ParametersBase):
     """
@@ -1317,9 +1349,12 @@ class Parameters:
 
             # We iterate a second time, to set global values, so that they
             # are properly forwarded.
+            # This also applies to some parameters that have to be loaded
+            # later than others.
             for key in json_dict:
                 if not isinstance(json_dict[key], dict):
                     setattr(loaded_parameters, key, json_dict[key])
+
             if no_snapshots is True:
                 loaded_parameters.data.snapshot_directories_list = []
         else:
