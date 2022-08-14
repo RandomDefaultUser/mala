@@ -34,6 +34,7 @@ class Runner:
         self.parameters: ParametersRunning = params.running
         self.network = network
         self.data = data
+        self._check_batch_size_lazy_loading()
         self.__prepare_to_run()
 
     def __prepare_to_run(self):
@@ -97,9 +98,20 @@ class Runner:
 
         if self.data.parameters.use_lazy_loading:
             data_set.return_outputs_directly = True
-            actual_outputs = \
-                (data_set
-                 [from_index:to_index])[1]
+            if self.data.parameters.lazy_loading_max_number_of_points is None:
+                actual_outputs = \
+                    (data_set
+                     [from_index:to_index])[1]
+            else:
+                actual_outputs = np.zeros((grid_size,
+                                           self.data.output_dimension))
+                for i in range(0, number_of_batches_per_snapshot):
+                    inputs, outputs = \
+                        data_set[from_index + (i * batch_size):
+                                 from_index + ((i + 1) * batch_size)]
+                    actual_outputs[i * batch_size:(i + 1) * batch_size, :] = \
+                        outputs
+
         else:
             actual_outputs = \
                 self.data.output_data_scaler.\
@@ -131,6 +143,15 @@ class Runner:
             data_set.return_outputs_directly = False
 
         return actual_outputs, predicted_outputs
+
+    def _check_batch_size_lazy_loading(self):
+        if self.data.parameters.use_lazy_loading and \
+           self.data.parameters.lazy_loading_max_number_of_points is not None:
+            if self.data.parameters.lazy_loading_max_number_of_points < \
+               self.parameters.mini_batch_size:
+                raise Exception("Maximum number of points in lazy loading "
+                                "data set cannot be smaller than mini batch "
+                                "size.")
 
     @staticmethod
     def _correct_batch_size_for_testing(datasize, batchsize):

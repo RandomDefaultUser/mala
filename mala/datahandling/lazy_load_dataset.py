@@ -152,8 +152,6 @@ class LazyLoadDataset(torch.utils.data.Dataset):
                         self.snapshot_list[file_index].output_npy_directory,
                         self.snapshot_list[file_index].output_npy_file),
                         mmap_mode="r")
-            if chunk_index is None:
-                print("WTF?")
             chunk_begin = self.chunk_size*chunk_index
             chunk_end = np.min([self.chunk_size*(chunk_index+1),
                                 self.snapshot_list[file_index].grid_size])

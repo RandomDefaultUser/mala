@@ -87,6 +87,7 @@ class Tester(Runner):
                      self.parameters.mini_batch_size, "to",
                      optimal_batch_size, min_verbosity=0)
             self.parameters.mini_batch_size = optimal_batch_size
+            self._check_batch_size_lazy_loading()
         self.number_of_batches_per_snapshot = int(grid_size /
                                                   self.parameters.
                                                   mini_batch_size)
