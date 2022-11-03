@@ -97,14 +97,26 @@ class Runner:
                                       self.data.get_output_dimension()))
 
         offset = snapshot_number * self.data.grid_size
+        if self.data.parameters.data_dimensions == "3d":
+            number_of_batches_per_snapshot = 1
         for i in range(0, number_of_batches_per_snapshot):
             inputs, outputs = \
                 data_set[offset+(i * batch_size):offset+((i + 1) * batch_size)]
             inputs = inputs.to(self.parameters._configuration["device"])
-            predicted_outputs[i * batch_size:(i + 1) * batch_size, :] = \
-                self.data.output_data_scaler.\
-                inverse_transform(self.network(inputs).
-                                  to('cpu'), as_numpy=True)
+            if self.data.parameters.data_dimensions == "3d":
+                tmp_outputs = self.data.output_data_scaler.\
+                    inverse_transform(self.network(inputs).
+                                      to('cpu'), as_numpy=True)
+                predicted_outputs = np.squeeze(tmp_outputs)
+                predicted_outputs = predicted_outputs.transpose((1, 2, 3, 0))
+                actual_outputs = np.squeeze(actual_outputs)
+                actual_outputs = actual_outputs.transpose((1, 2, 3, 0))
+                print("test")
+            else:
+                predicted_outputs[i * batch_size:(i + 1) * batch_size, :] = \
+                    self.data.output_data_scaler.\
+                    inverse_transform(self.network(inputs).
+                                      to('cpu'), as_numpy=True)
 
         # Restricting the actual quantities to physical meaningful values,
         # i.e. restricting the (L)DOS to positive values.

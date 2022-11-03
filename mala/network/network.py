@@ -58,6 +58,9 @@ class Network(nn.Module):
             elif params.network.nn_type == "gru":
                 model = super(Network, GRU).__new__(GRU)
 
+            elif params.network.nn_type == "locality-cnn":
+                model = super(Network, LocalityCNN).__new__(LocalityCNN)
+
             if model is None:
                 raise Exception("Unsupported network architecture.")
         else:
@@ -96,7 +99,6 @@ class Network(nn.Module):
             self.loss_func = functional.mse_loss
         else:
             raise Exception("Unsupported loss function.")
-
 
     @abstractmethod
     def forward(self, inputs):
@@ -263,6 +265,25 @@ class FeedForwardNet(Network):
         for layer in self.layers:
             inputs = layer(inputs)
         return inputs
+
+
+class LocalityCNN(Network):
+    """CNN that learns electronic structure from local atomic structure."""
+
+    def __init__(self, params):
+        super(LocalityCNN, self).__init__(params)
+        self.conv_layer = nn.Conv3d(self.params.number_of_input_channels,
+                                    self.params.number_of_output_channels,
+                                    kernel_size=(self.params.kernel_size,
+                                                 self.params.kernel_size,
+                                                 self.params.kernel_size),
+                                    stride=1,
+                                    padding="same")
+        self.conv_layer.to(self.params._configuration["device"])
+
+    def forward(self, inputs):
+        out = self.conv_layer(inputs)
+        return out
 
 
 class LSTM(Network):

@@ -678,6 +678,12 @@ class DataHandler:
                                                 mmapmode='r')
                 if self.descriptor_calculator.descriptors_contain_xyz:
                     tmp = tmp[:, :, :, 3:]
+
+                if self.parameters.data_dimensions == "3d":
+                    tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                else:
+                    tmp = np.array(tmp)
+
                 tmp = np.array(tmp)
                 tmp *= self.descriptor_calculator. \
                     convert_units(1, snapshot.input_units)
@@ -691,9 +697,10 @@ class DataHandler:
         self.training_data_inputs = np.array(self.training_data_inputs)
         self.training_data_inputs = \
             self.training_data_inputs.astype(np.float32)
-        self.training_data_inputs = \
-            self.training_data_inputs.reshape(
-                [self.nr_training_data, self.get_input_dimension()])
+        if self.parameters.data_dimensions == "1d":
+            self.training_data_inputs = \
+                self.training_data_inputs.reshape(
+                    [self.nr_training_data, self.get_input_dimension()])
         self.training_data_inputs = \
             torch.from_numpy(self.training_data_inputs).float()
 
@@ -710,7 +717,10 @@ class DataHandler:
                                          snapshot.output_npy_directory,
                                          snapshot.output_npy_file),
                                          mmapmode='r')
-                tmp = np.array(tmp)
+                if self.parameters.data_dimensions == "3d":
+                    tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                else:
+                    tmp = np.array(tmp)
                 tmp *= self.target_calculator. \
                     convert_units(1, snapshot.output_units)
                 self.training_data_outputs.append(tmp)
@@ -723,8 +733,9 @@ class DataHandler:
         self.training_data_outputs = np.array(self.training_data_outputs)
         self.training_data_outputs = \
             self.training_data_outputs.astype(np.float32)
-        self.training_data_outputs = self.training_data_outputs.reshape(
-            [self.nr_training_data, self.get_output_dimension()])
+        if self.parameters.data_dimensions == "1d":
+            self.training_data_outputs = self.training_data_outputs.reshape(
+                [self.nr_training_data, self.get_output_dimension()])
         self.training_data_outputs = \
             torch.from_numpy(self.training_data_outputs).float()
 
@@ -821,7 +832,10 @@ class DataHandler:
                                      snapshot.input_npy_file), mmapmode='r')
                     if self.descriptor_calculator.descriptors_contain_xyz:
                         tmp = tmp[:, :, :, 3:]
-                    tmp = np.array(tmp)
+                    if self.parameters.data_dimensions == "3d":
+                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                    else:
+                        tmp = np.array(tmp)
                     tmp *= self.descriptor_calculator.\
                         convert_units(1, snapshot.input_units)
                     if snapshot.snapshot_function == "va":
@@ -831,7 +845,10 @@ class DataHandler:
                     tmp = self.__load_from_npy_file(
                         os.path.join(snapshot.output_npy_directory,
                                      snapshot.output_npy_file), mmapmode='r')
-                    tmp = np.array(tmp)
+                    if self.parameters.data_dimensions == "3d":
+                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                    else:
+                        tmp = np.array(tmp)
                     tmp *= self.target_calculator.\
                         convert_units(1, snapshot.output_units)
                     if snapshot.snapshot_function == "va":
@@ -848,9 +865,10 @@ class DataHandler:
                 self.test_data_inputs = np.array(self.test_data_inputs)
                 self.test_data_inputs = \
                     self.test_data_inputs.astype(np.float32)
-                self.test_data_inputs = \
-                    self.test_data_inputs.reshape(
-                        [self.nr_test_data, self.get_input_dimension()])
+                if self.parameters.data_dimensions == "1d":
+                    self.test_data_inputs = \
+                        self.test_data_inputs.reshape(
+                            [self.nr_test_data, self.get_input_dimension()])
                 self.test_data_inputs = \
                     torch.from_numpy(self.test_data_inputs).float()
                 self.test_data_inputs = \
@@ -860,9 +878,10 @@ class DataHandler:
             self.validation_data_inputs = np.array(self.validation_data_inputs)
             self.validation_data_inputs = \
                 self.validation_data_inputs.astype(np.float32)
-            self.validation_data_inputs = \
-                self.validation_data_inputs.reshape(
-                    [self.nr_validation_data, self.get_input_dimension()])
+            if self.parameters.data_dimensions == "1d":
+                self.validation_data_inputs = \
+                    self.validation_data_inputs.reshape(
+                        [self.nr_validation_data, self.get_input_dimension()])
             self.validation_data_inputs = \
                 torch.from_numpy(self.validation_data_inputs).float()
             self.validation_data_inputs = \
@@ -874,9 +893,10 @@ class DataHandler:
                 self.test_data_outputs = np.array(self.test_data_outputs)
                 self.test_data_outputs = \
                     self.test_data_outputs.astype(np.float32)
-                self.test_data_outputs = \
-                    self.test_data_outputs.reshape(
-                        [self.nr_test_data, self.get_output_dimension()])
+                if self.parameters.data_dimensions == "1d":
+                    self.test_data_outputs = \
+                        self.test_data_outputs.reshape(
+                            [self.nr_test_data, self.get_output_dimension()])
                 self.test_data_outputs = \
                     torch.from_numpy(self.test_data_outputs).float()
                 self.test_data_outputs = \
@@ -886,9 +906,10 @@ class DataHandler:
                 np.array(self.validation_data_outputs)
             self.validation_data_outputs = \
                 self.validation_data_outputs.astype(np.float32)
-            self.validation_data_outputs = \
-                self.validation_data_outputs.reshape(
-                    [self.nr_validation_data, self.get_output_dimension()])
+            if self.parameters.data_dimensions == "1d":
+                self.validation_data_outputs = \
+                    self.validation_data_outputs.reshape(
+                        [self.nr_validation_data, self.get_output_dimension()])
             self.validation_data_outputs = \
                 torch.from_numpy(self.validation_data_outputs).float()
             self.validation_data_outputs = \

@@ -259,6 +259,24 @@ class ParametersNetwork(ParametersBase):
         self.dropout = 0.1
         self.num_heads = 10
 
+        # CNN
+        self.number_of_input_channels = 0
+        self.number_of_output_channels = 0
+        self.kernel_size = 0
+
+    @property
+    def kernel_size(self):
+        return self._kernel_size
+
+    @kernel_size.setter
+    def kernel_size(self, value):
+        if value % 2 == 0:
+            printout("Adjusting kernel size from", value, "to", value+1,
+                     min_verbosity=2)
+            self._kernel_size = value+1
+        else:
+            self._kernel_size = value
+
 
 class ParametersDescriptors(ParametersBase):
     """
@@ -565,6 +583,29 @@ class ParametersData(ParametersBase):
         self.number_of_clusters = 40
         self.train_ratio = 0.1
         self.sample_ratio = 0.5
+        self.data_dimensions = "1d"
+
+    @property
+    def data_dimensions(self):
+        """
+        Control how data is stored internally.
+        Can be either "3d" or "1d" (default). If "1d", volumetric
+        data is rearranged into one long list of feature vectors. This is
+        needed for training regular feed-forward NNs. If "3d", spatial
+        structure is observed. With this, e.g. temperature-aware CNNs
+        can be used.
+        """
+        return self._data_dimensions
+
+    @data_dimensions.setter
+    def data_dimensions(self, value):
+        if value != "1d" and value != "3d":
+            parallel_warn("Currently data handling can only be 1d or 3d. "
+                          "Unknown option detected, resetting it to 1d "
+                          "(default)")
+            self._data_dimensions = "1d"
+        else:
+            self._data_dimensions = value
 
 
 class ParametersRunning(ParametersBase):

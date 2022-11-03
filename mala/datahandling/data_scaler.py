@@ -227,6 +227,7 @@ class DataScaler:
 
         """
         if self.scale_standard is False and self.scale_normal is False:
+            self.cantransform = True
             return
         else:
             with torch.no_grad():
