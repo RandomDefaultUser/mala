@@ -111,7 +111,6 @@ class Runner:
                 predicted_outputs = predicted_outputs.transpose((1, 2, 3, 0))
                 actual_outputs = np.squeeze(actual_outputs)
                 actual_outputs = actual_outputs.transpose((1, 2, 3, 0))
-                print("test")
             else:
                 predicted_outputs[i * batch_size:(i + 1) * batch_size, :] = \
                     self.data.output_data_scaler.\
