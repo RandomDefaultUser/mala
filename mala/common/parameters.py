@@ -584,6 +584,7 @@ class ParametersData(ParametersBase):
         self.train_ratio = 0.1
         self.sample_ratio = 0.5
         self.data_dimensions = "1d"
+        self.data_splitting_3d = [0, 0, 0]
 
     @property
     def data_dimensions(self):

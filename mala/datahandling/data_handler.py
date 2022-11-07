@@ -123,6 +123,14 @@ class DataHandler:
         Torch tensor holding all scaled testing data output.
         """
 
+        # For batched 3D data.
+        self.x_fractions = None
+        self.y_fractions = None
+        self.z_fractions = None
+
+        # Default: Volume is not split.
+        self.number_of_fractional_volumes = 1
+
     def get_input_dimension(self):
         """
         Get the dimension of the input vector.
@@ -459,6 +467,25 @@ class DataHandler:
             if firstsnapshot:
                 self.input_dimension = tmp_input_dimension
                 self.grid_dimension[0:3] = tmp_grid_dim[0:3]
+                self.x_fractions = self.grid_dimension[0]
+                self.y_fractions = self.grid_dimension[1]
+                self.z_fractions = self.grid_dimension[2]
+                if self.parameters.data_splitting_3d[0] != 0 and \
+                        self.parameters.data_splitting_3d[1] != 0 and \
+                        self.parameters.data_splitting_3d[2] != 0:
+                    self.x_fractions = \
+                        int(tmp[:, :, :, 0].shape[0] / \
+                            self.parameters.data_splitting_3d[0])
+                    self.y_fractions = \
+                        int(tmp[:, :, :, 0].shape[1] / \
+                            self.parameters.data_splitting_3d[1])
+                    self.z_fractions = \
+                        int(tmp[:, :, :, 0].shape[2] / \
+                            self.parameters.data_splitting_3d[2])
+                    self.number_of_fractional_volumes = \
+                        self.x_fractions * self.y_fractions * \
+                        self.z_fractions
+
             else:
                 if (self.input_dimension != tmp_input_dimension
                         or self.grid_dimension[0] != tmp_grid_dim[0]
@@ -680,14 +707,46 @@ class DataHandler:
                     tmp = tmp[:, :, :, 3:]
 
                 if self.parameters.data_dimensions == "3d":
-                    tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                    if self.parameters.data_splitting_3d[0] != 0 and \
+                       self.parameters.data_splitting_3d[1] != 0 and \
+                       self.parameters.data_splitting_3d[2] != 0:
+                        self.x_fractions = \
+                            int(tmp[:, :, :, 0].shape[0] / \
+                                self.parameters.data_splitting_3d[0])
+                        self.y_fractions = \
+                            int(tmp[:, :, :, 0].shape[1] / \
+                                self.parameters.data_splitting_3d[1])
+                        self.z_fractions = \
+                            int(tmp[:, :, :, 0].shape[2] / \
+                                self.parameters.data_splitting_3d[2])
+                        self.number_of_fractional_volumes = \
+                            self.x_fractions * self.y_fractions * \
+                            self.z_fractions
+
+                        # TODO: Make efficient.
+                        for x in range(0, self.x_fractions):
+                            for y in range(0, self.y_fractions):
+                                for z in range(0, self.z_fractions):
+                                    tmp_tmp = tmp[x*self.parameters.data_splitting_3d[0]:(x+1)*self.parameters.data_splitting_3d[0],
+                                                  y*self.parameters.data_splitting_3d[1]:(y+1)*self.parameters.data_splitting_3d[1],
+                                                  z*self.parameters.data_splitting_3d[2]:(z+1)*self.parameters.data_splitting_3d[2],
+                                              :]
+
+                                    tmp_tmp = np.array(tmp_tmp).transpose([3, 0, 1, 2])
+                                    tmp_tmp *= self.descriptor_calculator. \
+                                        convert_units(1, snapshot.input_units)
+                                    self.training_data_inputs.append(tmp_tmp)
+                    else:
+                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                        tmp *= self.descriptor_calculator. \
+                            convert_units(1, snapshot.input_units)
+                        self.training_data_inputs.append(tmp)
                 else:
                     tmp = np.array(tmp)
 
-                tmp = np.array(tmp)
-                tmp *= self.descriptor_calculator. \
-                    convert_units(1, snapshot.input_units)
-                self.training_data_inputs.append(tmp)
+                    tmp *= self.descriptor_calculator. \
+                        convert_units(1, snapshot.input_units)
+                    self.training_data_inputs.append(tmp)
 
         # The scalers will later operate on torch Tensors so we have to
         # make sure they are fitted on
@@ -718,12 +777,34 @@ class DataHandler:
                                          snapshot.output_npy_file),
                                          mmapmode='r')
                 if self.parameters.data_dimensions == "3d":
-                    tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                    if self.parameters.data_splitting_3d[0] != 0 and \
+                       self.parameters.data_splitting_3d[1] != 0 and \
+                       self.parameters.data_splitting_3d[2] != 0:
+
+                        # TODO: Make efficient.
+                        for x in range(0, self.x_fractions):
+                            for y in range(0, self.y_fractions):
+                                for z in range(0, self.z_fractions):
+                                    tmp_tmp = tmp[x*self.parameters.data_splitting_3d[0]:(x+1)*self.parameters.data_splitting_3d[0],
+                                                  y*self.parameters.data_splitting_3d[1]:(y+1)*self.parameters.data_splitting_3d[1],
+                                                  z*self.parameters.data_splitting_3d[2]:(z+1)*self.parameters.data_splitting_3d[2],
+                                              :]
+
+                                    tmp_tmp = np.array(tmp_tmp).transpose([3, 0, 1, 2])
+                                    tmp_tmp *= self.target_calculator. \
+                                        convert_units(1, snapshot.output_units)
+                                    self.training_data_outputs.append(tmp_tmp)
+                    else:
+                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                        tmp *= self.target_calculator. \
+                            convert_units(1, snapshot.output_units)
+                        self.training_data_outputs.append(tmp)
                 else:
                     tmp = np.array(tmp)
-                tmp *= self.target_calculator. \
-                    convert_units(1, snapshot.output_units)
-                self.training_data_outputs.append(tmp)
+
+                    tmp *= self.target_calculator. \
+                        convert_units(1, snapshot.output_units)
+                    self.training_data_outputs.append(tmp)
 
         # The scalers will later operate on torch Tensors so we have to
         # make sure they are fitted on
@@ -833,28 +914,115 @@ class DataHandler:
                     if self.descriptor_calculator.descriptors_contain_xyz:
                         tmp = tmp[:, :, :, 3:]
                     if self.parameters.data_dimensions == "3d":
-                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                        if self.parameters.data_splitting_3d[0] != 0 and \
+                                self.parameters.data_splitting_3d[1] != 0 and \
+                                self.parameters.data_splitting_3d[2] != 0:
+
+                            # TODO: Make efficient.
+                            for x in range(0, self.x_fractions):
+                                for y in range(0, self.y_fractions):
+                                    for z in range(0, self.z_fractions):
+                                        tmp_tmp = tmp[x *
+                                                      self.parameters.data_splitting_3d[
+                                                          0]:(x + 1) *
+                                                             self.parameters.data_splitting_3d[
+                                                                 0],
+                                                  y *
+                                                  self.parameters.data_splitting_3d[
+                                                      1]:(y + 1) *
+                                                         self.parameters.data_splitting_3d[
+                                                             1],
+                                                  z *
+                                                  self.parameters.data_splitting_3d[
+                                                      2]:(z + 1) *
+                                                         self.parameters.data_splitting_3d[
+                                                             2],
+                                                  :]
+
+                                        tmp_tmp = np.array(tmp_tmp).transpose(
+                                            [3, 0, 1, 2])
+                                        tmp_tmp *= self.descriptor_calculator. \
+                                            convert_units(1,
+                                                          snapshot.input_units)
+                                        if snapshot.snapshot_function == "va":
+                                            self.validation_data_inputs.append(
+                                                tmp_tmp)
+                                        if snapshot.snapshot_function == "te":
+                                            self.test_data_inputs.append(tmp_tmp)
+
+                        else:
+                            tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                            tmp *= self.descriptor_calculator. \
+                                convert_units(1, snapshot.input_units)
+                            if snapshot.snapshot_function == "va":
+                                self.validation_data_inputs.append(tmp)
+                            if snapshot.snapshot_function == "te":
+                                self.test_data_inputs.append(tmp)
                     else:
                         tmp = np.array(tmp)
-                    tmp *= self.descriptor_calculator.\
-                        convert_units(1, snapshot.input_units)
-                    if snapshot.snapshot_function == "va":
-                        self.validation_data_inputs.append(tmp)
-                    if snapshot.snapshot_function == "te":
-                        self.test_data_inputs.append(tmp)
+                        tmp *= self.descriptor_calculator.\
+                            convert_units(1, snapshot.input_units)
+                        if snapshot.snapshot_function == "va":
+                            self.validation_data_inputs.append(tmp)
+                        if snapshot.snapshot_function == "te":
+                            self.test_data_inputs.append(tmp)
                     tmp = self.__load_from_npy_file(
                         os.path.join(snapshot.output_npy_directory,
                                      snapshot.output_npy_file), mmapmode='r')
                     if self.parameters.data_dimensions == "3d":
-                        tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                        if self.parameters.data_splitting_3d[0] != 0 and \
+                                self.parameters.data_splitting_3d[1] != 0 and \
+                                self.parameters.data_splitting_3d[2] != 0:
+
+                            # TODO: Make efficient.
+                            for x in range(0, self.x_fractions):
+                                for y in range(0, self.y_fractions):
+                                    for z in range(0, self.z_fractions):
+                                        tmp_tmp = tmp[x *
+                                                      self.parameters.data_splitting_3d[
+                                                          0]:(x + 1) *
+                                                             self.parameters.data_splitting_3d[
+                                                                 0],
+                                                  y *
+                                                  self.parameters.data_splitting_3d[
+                                                      1]:(y + 1) *
+                                                         self.parameters.data_splitting_3d[
+                                                             1],
+                                                  z *
+                                                  self.parameters.data_splitting_3d[
+                                                      2]:(z + 1) *
+                                                         self.parameters.data_splitting_3d[
+                                                             2],
+                                                  :]
+
+                                        tmp_tmp = np.array(tmp_tmp).transpose(
+                                            [3, 0, 1, 2])
+                                        tmp_tmp *= self.target_calculator. \
+                                            convert_units(1,
+                                                          snapshot.output_units)
+                                        if snapshot.snapshot_function == "va":
+                                            self.validation_data_outputs.append(
+                                                tmp_tmp)
+                                        if snapshot.snapshot_function == "te":
+                                            self.test_data_outputs.append(tmp_tmp)
+
+                        else:
+                            tmp = np.array(tmp).transpose([3, 0, 1, 2])
+                            tmp *= self.target_calculator.\
+                                convert_units(1, snapshot.output_units)
+                            if snapshot.snapshot_function == "va":
+                                self.validation_data_outputs.append(tmp)
+                            if snapshot.snapshot_function == "te":
+                                self.test_data_outputs.append(tmp)
+
                     else:
                         tmp = np.array(tmp)
-                    tmp *= self.target_calculator.\
-                        convert_units(1, snapshot.output_units)
-                    if snapshot.snapshot_function == "va":
-                        self.validation_data_outputs.append(tmp)
-                    if snapshot.snapshot_function == "te":
-                        self.test_data_outputs.append(tmp)
+                        tmp *= self.target_calculator.\
+                            convert_units(1, snapshot.output_units)
+                        if snapshot.snapshot_function == "va":
+                            self.validation_data_outputs.append(tmp)
+                        if snapshot.snapshot_function == "te":
+                            self.test_data_outputs.append(tmp)
 
             # I know this would be more elegant with the member functions typed
             # below. But I am pretty sure

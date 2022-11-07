@@ -67,7 +67,7 @@ class Tester(Runner):
         # We will use the DataSet iterator to iterate over the test data.
         # But since we only want the data per snapshot,
         # we need to make sure the batch size is compatible with that.
-        optimal_batch_size = self.\
+        optimal_batch_size = self. \
             _correct_batch_size_for_testing(self.data.grid_size,
                                             self.parameters.mini_batch_size)
         if optimal_batch_size != self.parameters.mini_batch_size:

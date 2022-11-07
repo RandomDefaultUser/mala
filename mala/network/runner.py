@@ -9,6 +9,7 @@ import torch
 
 from mala.common.parameters import ParametersRunning
 from mala import Parameters
+from mala import printout
 
 
 class Runner:
@@ -79,26 +80,101 @@ class Runner:
         predicted_outputs : numpy.ndarray
             Precicted outputs for snapshot.
         """
-        if self.data.parameters.use_lazy_loading:
-            data_set.return_outputs_directly = True
-            actual_outputs = \
-                (data_set
-                 [snapshot_number * self.data.
-                     grid_size:(snapshot_number + 1) * self.data.grid_size])[1]
-        else:
-            actual_outputs = \
-                self.data.output_data_scaler.\
-                inverse_transform(
-                    (data_set[snapshot_number * self.data.grid_size:
-                              (snapshot_number + 1) * self.data.grid_size])[1],
-                    as_numpy=True)
+        if self.data.parameters.data_dimensions == "3d":
+            x_counter = 0
+            y_counter = 0
+            z_counter = 0
 
-        predicted_outputs = np.zeros((self.data.grid_size,
-                                      self.data.get_output_dimension()))
+            x_increment = self.data.parameters.data_splitting_3d[0]
+            y_increment = self.data.parameters.data_splitting_3d[1]
+            z_increment = self.data.parameters.data_splitting_3d[2]
+            if x_increment == 0:
+                x_increment = self.data.grid_dimension[0]
+            if y_increment == 0:
+                y_increment = self.data.grid_dimension[1]
+            if z_increment == 0:
+                z_increment = self.data.grid_dimension[2]
+
+        if self.data.parameters.use_lazy_loading:
+            if self.data.parameters.data_dimensions == "1d":
+                data_set.return_outputs_directly = True
+                actual_outputs = \
+                    (data_set
+                     [snapshot_number * self.data.
+                         grid_size:(snapshot_number + 1) * self.data.grid_size])[1]
+
+            # Reordering in the 3D case.
+            else:
+                actual_outputs = np.zeros((self.data.get_output_dimension(),
+                                          self.data.grid_dimension[0],
+                                          self.data.grid_dimension[1],
+                                          self.data.grid_dimension[2]))
+                for i in range(0, self.data.number_of_fractional_volumes):
+                    actual_outputs[:,
+                        x_counter * x_increment:(x_counter + 1) * x_increment,
+                        y_counter * y_increment:(y_counter + 1) * y_increment,
+                        z_counter * z_increment:(z_counter + 1) * z_increment] = \
+                            data_set[snapshot_number *
+                                     self.data.number_of_fractional_volumes+i]
+                    z_counter += 1
+                    if z_counter == self.data.z_fractions:
+                        z_counter = 0
+                        y_counter += 1
+                    if y_counter == self.data.y_fractions:
+                        y_counter = 0
+                        x_counter += 1
+        else:
+            if self.data.parameters.data_dimensions == "1d":
+                actual_outputs = \
+                    self.data.output_data_scaler.\
+                    inverse_transform(
+                        (data_set[snapshot_number * self.data.grid_size:
+                                  (snapshot_number + 1) * self.data.grid_size])[1],
+                        as_numpy=True)
+            # Reordering in the 3D case.
+            else:
+                actual_outputs = np.zeros((self.data.get_output_dimension(),
+                                          self.data.grid_dimension[0],
+                                          self.data.grid_dimension[1],
+                                          self.data.grid_dimension[2]))
+                for i in range(0, self.data.number_of_fractional_volumes):
+                    test = data_set[snapshot_number *
+                                     self.data.number_of_fractional_volumes+i]
+                    actual_outputs[:,
+                        x_counter * x_increment:(x_counter + 1) * x_increment,
+                        y_counter * y_increment:(y_counter + 1) * y_increment,
+                        z_counter * z_increment:(z_counter + 1) * z_increment] = \
+                        self.data.output_data_scaler. \
+                            inverse_transform(
+                            (data_set[snapshot_number *
+                                     self.data.number_of_fractional_volumes+i])[1],
+                                     as_numpy=True)
+                    z_counter += 1
+                    if z_counter == self.data.z_fractions:
+                        z_counter = 0
+                        y_counter += 1
+                    if y_counter == self.data.y_fractions:
+                        y_counter = 0
+                        x_counter += 1
+
+        if self.data.parameters.data_dimensions == "3d":
+            predicted_outputs = np.zeros((self.data.get_output_dimension(),
+                                          self.data.grid_dimension[0],
+                                          self.data.grid_dimension[1],
+                                          self.data.grid_dimension[2]))
+            x_counter = 0
+            y_counter = 0
+            z_counter = 0
+
+        else:
+            predicted_outputs = np.zeros((self.data.grid_size,
+                                          self.data.get_output_dimension()))
 
         offset = snapshot_number * self.data.grid_size
         if self.data.parameters.data_dimensions == "3d":
-            number_of_batches_per_snapshot = 1
+            number_of_batches_per_snapshot = self.data.\
+                number_of_fractional_volumes
+            offset = snapshot_number * number_of_batches_per_snapshot
         for i in range(0, number_of_batches_per_snapshot):
             inputs, outputs = \
                 data_set[offset+(i * batch_size):offset+((i + 1) * batch_size)]
@@ -107,15 +183,28 @@ class Runner:
                 tmp_outputs = self.data.output_data_scaler.\
                     inverse_transform(self.network(inputs).
                                       to('cpu'), as_numpy=True)
-                predicted_outputs = np.squeeze(tmp_outputs)
-                predicted_outputs = predicted_outputs.transpose((1, 2, 3, 0))
-                actual_outputs = np.squeeze(actual_outputs)
-                actual_outputs = actual_outputs.transpose((1, 2, 3, 0))
+                predicted_outputs[:, x_counter*x_increment:(x_counter+1)*x_increment,
+                                  y_counter*y_increment:(y_counter+1)*y_increment,
+                                  z_counter*z_increment:(z_counter+1)*z_increment] = \
+                    tmp_outputs
+                z_counter += 1
+                if z_counter == self.data.z_fractions:
+                    z_counter = 0
+                    y_counter += 1
+                if y_counter == self.data.y_fractions:
+                    y_counter = 0
+                    x_counter += 1
             else:
                 predicted_outputs[i * batch_size:(i + 1) * batch_size, :] = \
                     self.data.output_data_scaler.\
                     inverse_transform(self.network(inputs).
                                       to('cpu'), as_numpy=True)
+
+        if self.data.parameters.data_dimensions == "3d":
+            predicted_outputs = np.squeeze(predicted_outputs)
+            predicted_outputs = predicted_outputs.transpose((1, 2, 3, 0))
+            actual_outputs = np.squeeze(actual_outputs)
+            actual_outputs = actual_outputs.transpose((1, 2, 3, 0))
 
         # Restricting the actual quantities to physical meaningful values,
         # i.e. restricting the (L)DOS to positive values.
@@ -129,8 +218,7 @@ class Runner:
 
         return actual_outputs, predicted_outputs
 
-    @staticmethod
-    def _correct_batch_size_for_testing(datasize, batchsize):
+    def _correct_batch_size_for_testing(self, datasize, batchsize):
         """
         Get the correct batch size for testing.
 
@@ -138,8 +226,11 @@ class Runner:
         data_per_snapshot / batch_size will result in an integer division
         without any residual value.
         """
-        new_batch_size = batchsize
-        if datasize % new_batch_size != 0:
-            while datasize % new_batch_size != 0:
-                new_batch_size += 1
-        return new_batch_size
+        if self.data.parameters.data_dimensions == "3d":
+            return 1
+        else:
+            new_batch_size = batchsize
+            if datasize % new_batch_size != 0:
+                while datasize % new_batch_size != 0:
+                    new_batch_size += 1
+            return new_batch_size
