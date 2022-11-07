@@ -710,18 +710,6 @@ class DataHandler:
                     if self.parameters.data_splitting_3d[0] != 0 and \
                        self.parameters.data_splitting_3d[1] != 0 and \
                        self.parameters.data_splitting_3d[2] != 0:
-                        self.x_fractions = \
-                            int(tmp[:, :, :, 0].shape[0] / \
-                                self.parameters.data_splitting_3d[0])
-                        self.y_fractions = \
-                            int(tmp[:, :, :, 0].shape[1] / \
-                                self.parameters.data_splitting_3d[1])
-                        self.z_fractions = \
-                            int(tmp[:, :, :, 0].shape[2] / \
-                                self.parameters.data_splitting_3d[2])
-                        self.number_of_fractional_volumes = \
-                            self.x_fractions * self.y_fractions * \
-                            self.z_fractions
 
                         # TODO: Make efficient.
                         for x in range(0, self.x_fractions):
@@ -873,7 +861,9 @@ class DataHandler:
                         self.descriptor_calculator, self.target_calculator,
                         self.grid_dimension, self.grid_size,
                         self.use_horovod,
-                        input_requires_grad=True)
+                        input_requires_grad=True,
+                        grid_type=self.parameters.data_dimensions,
+                        data_splitting_3d=self.parameters.data_splitting_3d)
 
             # Add snapshots to the lazy loading data sets.
             for snapshot in self.parameters.snapshot_directories_list:

@@ -62,7 +62,8 @@ class LazyLoadDataset(torch.utils.data.Dataset):
     def __init__(self, input_dimension, output_dimension, input_data_scaler,
                  output_data_scaler, descriptor_calculator,
                  target_calculator, grid_dimensions, grid_size, use_horovod,
-                 input_requires_grad=False):
+                 input_requires_grad=False,
+                 grid_type="1d", data_splitting_3d=[0, 0, 0]):
         self.snapshot_list = []
         self.input_dimension = input_dimension
         self.output_dimension = output_dimension
@@ -82,6 +83,36 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         self.use_horovod = use_horovod
         self.return_outputs_directly = False
         self.input_requires_grad = input_requires_grad
+        self.grid_type = grid_type
+
+        # For batched 3D data.
+        self.x_fractions = None
+        self.y_fractions = None
+        self.z_fractions = None
+        self.data_splitting_3d = data_splitting_3d
+
+        # Default: Volume is not split.
+        self.number_of_fractional_volumes = 1
+
+        self.x_fractions = self.grid_dimensions[0]
+        self.y_fractions = self.grid_dimensions[1]
+        self.z_fractions = self.grid_dimensions[2]
+
+        if self.data_splitting_3d[0] != 0 and \
+                self.data_splitting_3d[1] != 0 and \
+                self.data_splitting_3d[2] != 0:
+            self.x_fractions = \
+                int(self.grid_dimensions[0] / \
+                    self.data_splitting_3d[0])
+            self.y_fractions = \
+                int(self.grid_dimensions[1] / \
+                    self.data_splitting_3d[1])
+            self.z_fractions = \
+                int(self.grid_dimensions[2] / \
+                    self.data_splitting_3d[2])
+            self.number_of_fractional_volumes = \
+                self.x_fractions * self.y_fractions * \
+                self.z_fractions
 
     @property
     def return_outputs_directly(self):
@@ -148,21 +179,98 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         # Transform the data.
         if self.descriptors_contain_xyz:
             self.input_data = self.input_data[:, :, :, 3:]
-        self.input_data = \
-            self.input_data.reshape([self.grid_size, self.input_dimension])
-        self.input_data *= \
-            self.descriptor_calculator.\
-            convert_units(1, self.snapshot_list[file_index].input_units)
+        if self.grid_type == "3d":
+            if self.data_splitting_3d[0] != 0 and \
+                    self.data_splitting_3d[1] != 0 and \
+                    self.data_splitting_3d[2] != 0:
+
+                # TODO: Make efficient.
+                tmp = []
+                for x in range(0, self.x_fractions):
+                    for y in range(0, self.y_fractions):
+                        for z in range(0, self.z_fractions):
+                            tmp_tmp = self.input_data[x *
+                                          self.data_splitting_3d[
+                                              0]:(x + 1) *
+                                                 self.data_splitting_3d[
+                                                     0],
+                                      y *
+                                      self.data_splitting_3d[
+                                          1]:(y + 1) *
+                                             self.data_splitting_3d[
+                                                 1],
+                                      z *
+                                      self.data_splitting_3d[
+                                          2]:(z + 1) *
+                                             self.data_splitting_3d[
+                                                 2],
+                                      :]
+
+                            tmp_tmp = np.array(tmp_tmp).transpose(
+                                [3, 0, 1, 2])
+                            tmp_tmp *= self.descriptor_calculator. \
+                                convert_units(1, self.snapshot_list[file_index].input_units)
+                            tmp.append(tmp_tmp)
+                self.input_data = np.array(tmp)
+            else:
+                self.input_data = np.array(self.input_data).transpose([3, 0, 1, 2])
+                self.input_data *= self.descriptor_calculator. \
+                    convert_units(1, self.snapshot_list[file_index].input_units)
+        else:
+            self.input_data *= \
+                self.descriptor_calculator.\
+                convert_units(1, self.snapshot_list[file_index].input_units)
+            self.input_data = \
+                self.input_data.reshape([self.grid_size, self.input_dimension])
+
         self.input_data = self.input_data.astype(np.float32)
         self.input_data = torch.from_numpy(self.input_data).float()
         self.input_data = self.input_data_scaler.transform(self.input_data)
         self.input_data.requires_grad = self.input_requires_grad
 
-        self.output_data = \
-            self.output_data.reshape([self.grid_size, self.output_dimension])
-        self.output_data *= \
-            self.target_calculator.\
-            convert_units(1, self.snapshot_list[file_index].output_units)
+        if self.grid_type == "3d":
+            if self.data_splitting_3d[0] != 0 and \
+                    self.data_splitting_3d[1] != 0 and \
+                    self.data_splitting_3d[2] != 0:
+
+                # TODO: Make efficient.
+                tmp = []
+                for x in range(0, self.x_fractions):
+                    for y in range(0, self.y_fractions):
+                        for z in range(0, self.z_fractions):
+                            tmp_tmp = self.output_data[
+                                      x * self.data_splitting_3d[
+                                          0]:(x + 1) *
+                                             self.data_splitting_3d[
+                                                 0],
+                                      y * self.data_splitting_3d[
+                                          1]:(y + 1) *
+                                             self.data_splitting_3d[
+                                                 1],
+                                      z * self.data_splitting_3d[
+                                          2]:(z + 1) *
+                                             self.data_splitting_3d[
+                                                 2],
+                                      :]
+
+                            tmp_tmp = np.array(tmp_tmp).transpose([3, 0, 1, 2])
+                            tmp_tmp *= self.target_calculator. \
+                                convert_units(1, self.snapshot_list[file_index].output_units)
+                            tmp.append(tmp_tmp)
+                self.output_data = np.array(tmp)
+            else:
+                self.output_data = self.output_data.transpose([3, 0, 1, 2])
+                self.output_data *= self.target_calculator. \
+                    convert_units(1, self.snapshot_list[file_index].output_units)
+        else:
+            self.output_data = \
+                self.output_data.reshape(
+                    [self.grid_size, self.output_dimension])
+            self.output_data *= \
+                self.target_calculator. \
+                    convert_units(1,
+                                  self.snapshot_list[file_index].output_units)
+
         if self.return_outputs_directly is False:
             self.output_data = np.array(self.output_data)
             self.output_data = self.output_data.astype(np.float32)
@@ -190,8 +298,12 @@ class LazyLoadDataset(torch.utils.data.Dataset):
         """
         # Get item can be called with an int or a slice.
         if isinstance(idx, int):
-            file_index = idx // self.grid_size
-            index_in_file = idx % self.grid_size
+            if self.grid_type == "1d":
+                file_index = idx // self.grid_size
+                index_in_file = idx % self.grid_size
+            else:
+                file_index = idx // self.number_of_fractional_volumes
+                index_in_file = idx % self.number_of_fractional_volumes
 
             # Find out if new data is needed.
             if file_index != self.currently_loaded_file:
@@ -201,17 +313,26 @@ class LazyLoadDataset(torch.utils.data.Dataset):
 
         elif isinstance(idx, slice):
             # If a slice is requested, we have to find out if t spans files.
-            file_index_start = idx.start // self.grid_size
-            index_in_file_start = idx.start % self.grid_size
-            file_index_stop = idx.stop // self.grid_size
-            index_in_file_stop = idx.stop % self.grid_size
+            if self.grid_type == "1d":
+                file_index_start = idx.start // self.grid_size
+                index_in_file_start = idx.start % self.grid_size
+                file_index_stop = idx.stop // self.grid_size
+                index_in_file_stop = idx.stop % self.grid_size
+            else:
+                file_index_start = idx.start // self.number_of_fractional_volumes
+                index_in_file_start = idx.start % self.number_of_fractional_volumes
+                file_index_stop = idx.stop // self.number_of_fractional_volumes
+                index_in_file_stop = idx.stop % self.number_of_fractional_volumes
 
             # If it does, we cannot deliver.
             # Take care though, if a full snapshot is requested,
             # the stop index will point to the wrong file.
             if file_index_start != file_index_stop:
                 if index_in_file_stop == 0:
-                    index_in_file_stop = self.grid_size
+                    if self.grid_type == "1d":
+                        index_in_file_stop = self.grid_size
+                    else:
+                        index_in_file_stop = self.number_of_fractional_volumes
                 else:
                     raise Exception("Lazy loading currently only supports "
                                     "slices in one file. "

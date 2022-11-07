@@ -96,8 +96,8 @@ class Runner:
                 z_increment = self.data.grid_dimension[2]
 
         if self.data.parameters.use_lazy_loading:
+            data_set.return_outputs_directly = True
             if self.data.parameters.data_dimensions == "1d":
-                data_set.return_outputs_directly = True
                 actual_outputs = \
                     (data_set
                      [snapshot_number * self.data.
@@ -110,12 +110,14 @@ class Runner:
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
                 for i in range(0, self.data.number_of_fractional_volumes):
+                    test =                             (data_set[snapshot_number *
+                                     self.data.number_of_fractional_volumes+i])[1]
                     actual_outputs[:,
                         x_counter * x_increment:(x_counter + 1) * x_increment,
                         y_counter * y_increment:(y_counter + 1) * y_increment,
                         z_counter * z_increment:(z_counter + 1) * z_increment] = \
-                            data_set[snapshot_number *
-                                     self.data.number_of_fractional_volumes+i]
+                            (data_set[snapshot_number *
+                                     self.data.number_of_fractional_volumes+i])[1]
                     z_counter += 1
                     if z_counter == self.data.z_fractions:
                         z_counter = 0
@@ -138,8 +140,6 @@ class Runner:
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
                 for i in range(0, self.data.number_of_fractional_volumes):
-                    test = data_set[snapshot_number *
-                                     self.data.number_of_fractional_volumes+i]
                     actual_outputs[:,
                         x_counter * x_increment:(x_counter + 1) * x_increment,
                         y_counter * y_increment:(y_counter + 1) * y_increment,
