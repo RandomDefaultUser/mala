@@ -110,8 +110,6 @@ class Runner:
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
                 for i in range(0, self.data.number_of_fractional_volumes):
-                    test =                             (data_set[snapshot_number *
-                                     self.data.number_of_fractional_volumes+i])[1]
                     actual_outputs[:,
                         x_counter * x_increment:(x_counter + 1) * x_increment,
                         y_counter * y_increment:(y_counter + 1) * y_increment,

@@ -273,16 +273,26 @@ class LocalityCNN(Network):
     def __init__(self, params):
         super(LocalityCNN, self).__init__(params)
         self.conv_layer = nn.Conv3d(self.params.number_of_input_channels,
-                                    self.params.number_of_output_channels,
+                                    self.params.number_of_output_channels*2,
                                     kernel_size=(self.params.kernel_size,
                                                  self.params.kernel_size,
                                                  self.params.kernel_size),
                                     stride=1,
                                     padding="same")
+        self.linear_layers = nn.Sequential(
+            nn.LeakyReLU(),
+            nn.Linear(self.params.number_of_output_channels*2,
+                      self.params.number_of_output_channels),
+            nn.LeakyReLU(),
+        )
         self.conv_layer.to(self.params._configuration["device"])
+        self.linear_layers.to(self.params._configuration["device"])
 
     def forward(self, inputs):
         out = self.conv_layer(inputs)
+        out = torch.transpose(out, 1, 4)
+        out = self.linear_layers(out)
+        out = torch.transpose(out, 1, 4)
         return out
 
 

@@ -13,7 +13,9 @@ params.network.number_of_output_channels = 11
 params.network.kernel_size = 5
 params.descriptors.descriptors_contain_xyz = False
 params.network.nn_type = "locality-cnn"
-params.running.max_number_epochs = 10000
+params.running.max_number_epochs = 500
+params.running.learning_rate = 1
+params.data.data_splitting_3d = [3, 3, 3]
 
 data_handler = mala.DataHandler(params)
 
@@ -30,7 +32,6 @@ data_handler.add_snapshot("gaussians2.npy", inpath,
 data_handler.prepare_data()
 
 network = mala.Network(params)
-print(network.parameters())
 trainer = mala.Trainer(params, network, data_handler)
 trainer.train_network()
 
