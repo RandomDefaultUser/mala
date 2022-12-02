@@ -8,6 +8,7 @@ params.targets.ldos_gridsize = 11
 params.targets.ldos_gridspacing_ev = 2.5
 params.targets.ldos_gridoffset_ev = -5
 params.data.data_dimensions = "3d"
+params.data.output_rescaling_type = "normal"
 params.network.number_of_input_channels = 1
 params.network.number_of_output_channels = 11
 params.network.kernel_size = 5
