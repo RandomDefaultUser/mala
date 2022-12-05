@@ -232,6 +232,9 @@ class ObjectiveBase:
                 self.params.running.learning_rate_decay = par.\
                     get_parameter(trial)
 
+            elif "kernel_size" in par.name:
+                self.params.network.kernel_size = par.get_parameter(trial)
+
             # These are processed after the original layer has been
             # constructed.
             elif "layer_activation" in par.name:
