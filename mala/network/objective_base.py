@@ -45,6 +45,10 @@ class ObjectiveBase:
             lambda p: "ff_multiple_layers_count" in p.name,
             self.params.hyperparameters.hlist
         ))
+        self.contains_cnn = any(map(
+            lambda p: "cnn_dimensions" in p.name,
+            self.params.hyperparameters.hlist
+        ))
         if contains_multiple_layer_neurons != contains_multiple_layers_count:
             print("You selected multiple layers to be optimized, but either "
                   "the range of neurons or number of layers is missing. "
@@ -146,8 +150,11 @@ class ObjectiveBase:
             A set of hyperparameters encoded by optuna.
         """
         if self.optimize_layer_list:
-            self.params.network.layer_sizes = \
-                [self.data_handler.get_input_dimension()]
+            if self.contains_cnn:
+                self.params.network.layer_sizes = []
+            else:
+                self.params.network.layer_sizes = \
+                    [self.data_handler.get_input_dimension()]
         if self.optimize_activation_list > 0:
             self.params.network.layer_activations = []
 
@@ -195,7 +202,8 @@ class ObjectiveBase:
                 pass
 
             elif "ff_neurons_layer" in par.name:
-                if self.params.network.nn_type == "feed-forward":
+                if self.params.network.nn_type == "feed-forward" or \
+                   self.params.network.nn_type == "locality-cnn":
                     # Check for zero neuron layers; These indicate layers
                     # that can be left out.
                     layer_size = par.get_parameter(trial)
@@ -224,15 +232,20 @@ class ObjectiveBase:
                 self.params.running.learning_rate_decay = par.\
                     get_parameter(trial)
 
+            # These are processed after the original layer has been
+            # constructed.
             elif "layer_activation" in par.name:
+                pass
+
+            elif "cnn_dimensions" in par.name:
                 pass
 
             else:
                 raise Exception("Optimization of hyperparameter ", par.name,
                                 "not supported at the moment.")
 
-        # We have to process the activations separately, because they depend on
-        # the results of the layer lists.
+        # We have to process some hyperparameters separately, because
+        # they depend on the results of the layer lists.
 
         layer_counter = 0
         for par in self.params.hyperparameters.hlist:
@@ -241,6 +254,11 @@ class ObjectiveBase:
                     self.params.network.layer_activations.\
                         append(par.get_parameter(trial))
                 layer_counter += 1
+
+            elif "cnn_dimensions" in par.name:
+                value = par.get_parameter(trial)
+                self.params.network.layer_sizes.insert(0, value)
+                self.params.network.number_of_output_channels = value
 
         if self.optimize_layer_list:
             self.params.network.layer_sizes.\

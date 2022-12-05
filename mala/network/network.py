@@ -273,25 +273,66 @@ class LocalityCNN(Network):
     def __init__(self, params):
         super(LocalityCNN, self).__init__(params)
         self.conv_layer = nn.Conv3d(self.params.number_of_input_channels,
-                                    self.params.number_of_output_channels*2,
+                                    self.params.number_of_output_channels,
                                     kernel_size=(self.params.kernel_size,
                                                  self.params.kernel_size,
                                                  self.params.kernel_size),
                                     stride=1,
                                     padding="same")
-        self.linear_layers = nn.Sequential(
-            nn.LeakyReLU(),
-            nn.Linear(self.params.number_of_output_channels*2,
-                      self.params.number_of_output_channels),
-            nn.LeakyReLU(),
-        )
-        self.conv_layer.to(self.params._configuration["device"])
+
+        if self.number_of_layers <= 0:
+            raise Exception("Cannot construct a CNN without any linear "
+                            "layers.")
+
+        # Create a regular MLP for after the CNN layer.
+        if self.params.number_of_output_channels != \
+                self.params.layer_sizes[0]:
+            raise Exception(
+                "Cannot construct a CNN where the layer numbers "
+                "do not match.")
+
+        self.linear_layers = nn.ModuleList()
+
+        # If we have only one entry in the activation list,
+        # we use it for the entire list.
+        # We should NOT modify the list itself. This would break the
+        # hyperparameter algorithms.
+        use_only_one_activation_type = False
+        if len(self.params.layer_activations) == 1:
+            use_only_one_activation_type = True
+        elif len(self.params.layer_activations) < self.number_of_layers:
+            raise Exception("Not enough activation layers provided.")
+        elif len(self.params.layer_activations) > self.number_of_layers:
+            printout("Too many activation layers provided. "
+                     "The last",
+                     str(len(self.params.layer_activations) -
+                         self.number_of_layers),
+                     "activation function(s) will be ignored.",
+                     min_verbosity=1)
+
+        # Add the layers.
+        # As this is a feedforward layer we always add linear layers, and then
+        # an activation function
+        for i in range(0, self.number_of_layers):
+            self.linear_layers.append((nn.Linear(self.params.layer_sizes[i],
+                                          self.params.layer_sizes[i + 1])))
+            try:
+                if use_only_one_activation_type:
+                    self.linear_layers.append(self.activation_mappings[self.params.
+                                       layer_activations[0]]())
+                else:
+                    self.linear_layers.append(self.activation_mappings[self.params.
+                                       layer_activations[i]]())
+            except KeyError:
+                raise Exception("Invalid activation type seleceted.")
         self.linear_layers.to(self.params._configuration["device"])
+        self.conv_layer.to(self.params._configuration["device"])
 
     def forward(self, inputs):
         out = self.conv_layer(inputs)
         out = torch.transpose(out, 1, 4)
-        out = self.linear_layers(out)
+        for layer in self.linear_layers:
+            out = layer(out)
         out = torch.transpose(out, 1, 4)
         return out
 

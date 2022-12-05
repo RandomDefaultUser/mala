@@ -10,7 +10,8 @@ params.targets.ldos_gridoffset_ev = -5
 params.data.data_dimensions = "3d"
 params.data.output_rescaling_type = "normal"
 params.network.number_of_input_channels = 1
-params.network.number_of_output_channels = 11
+params.network.number_of_output_channels = 22
+params.network.layer_sizes = [22, 11]
 params.network.kernel_size = 5
 params.descriptors.descriptors_contain_xyz = False
 params.network.nn_type = "locality-cnn"
@@ -24,10 +25,10 @@ inpath = "/home/fiedlerl/data/mala_data_repo/Be2/" \
          "densities_gp/inputs_gaussians/"
 outpath = "/home/fiedlerl/data/mala_data_repo/Be2/training_data/"
 
-data_handler.add_snapshot("gaussians1.npy", inpath,
+data_handler.add_snapshot("gaussians1.in.npy", inpath,
                           "Be_snapshot1.out.npy", outpath,
                           add_snapshot_as="tr", output_units="1/(eV*Bohr^3)")
-data_handler.add_snapshot("gaussians2.npy", inpath,
+data_handler.add_snapshot("gaussians2.in.npy", inpath,
                           "Be_snapshot2.out.npy", outpath,
                           add_snapshot_as="va", output_units="1/(eV*Bohr^3)")
 data_handler.prepare_data()
@@ -37,7 +38,7 @@ trainer = mala.Trainer(params, network, data_handler)
 trainer.train_network()
 
 data_handler.clear_data()
-data_handler.add_snapshot("gaussians3.npy", inpath,
+data_handler.add_snapshot("gaussians3.in.npy", inpath,
                           "Be_snapshot3.out.npy", outpath,
                           add_snapshot_as="te", output_units="1/(eV*Bohr^3)")
 data_handler.prepare_data(reparametrize_scaler=False)
