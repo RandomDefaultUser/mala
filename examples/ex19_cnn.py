@@ -17,7 +17,7 @@ params.descriptors.descriptors_contain_xyz = False
 params.network.nn_type = "locality-cnn"
 params.running.max_number_epochs = 500
 params.running.learning_rate = 1
-params.data.data_splitting_3d = [3, 3, 3]
+params.data.data_splitting_3d = [0, 0, 0]
 
 data_handler = mala.DataHandler(params)
 

@@ -278,7 +278,8 @@ class LocalityCNN(Network):
                                                  self.params.kernel_size,
                                                  self.params.kernel_size),
                                     stride=1,
-                                    padding="same")
+                                    padding="same",
+                                    padding_mode="circular")
 
         if self.number_of_layers <= 0:
             raise Exception("Cannot construct a CNN without any linear "
