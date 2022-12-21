@@ -677,20 +677,26 @@ class DataHandler:
                                               dtype=np.float32)
 
     def __allocate_3d_arrays(self):
+        if self.parameters.data_splitting_3d[0] != 0 and \
+           self.parameters.data_splitting_3d[1] != 0 and \
+           self.parameters.data_splitting_3d[2] != 0:
+            dimensions = self.parameters.data_splitting_3d
+        else:
+            dimensions = self.grid_dimension
         if self.nr_training_data > 0:
             nr_batches = self.nr_training_snapshots * \
                          self.number_of_fractional_volumes
             self.training_data_inputs = np.zeros((nr_batches,
                                                   self.get_input_dimension(),
-                                                  self.parameters.data_splitting_3d[0],
-                                                  self.parameters.data_splitting_3d[1],
-                                                  self.parameters.data_splitting_3d[2]),
+                                                  dimensions[0],
+                                                  dimensions[1],
+                                                  dimensions[2]),
                                                  dtype=np.float32)
             self.training_data_outputs = np.zeros((nr_batches,
                                                    self.get_output_dimension(),
-                                                   self.parameters.data_splitting_3d[0],
-                                                   self.parameters.data_splitting_3d[1],
-                                                   self.parameters.data_splitting_3d[2]),
+                                                   dimensions[0],
+                                                   dimensions[1],
+                                                   dimensions[2]),
                                                   dtype=np.float32)
         else:
             # TODO: Get rid of this.
@@ -704,15 +710,15 @@ class DataHandler:
 
             self.validation_data_inputs = np.zeros((nr_batches,
                                                     self.get_input_dimension(),
-                                                    self.parameters.data_splitting_3d[0],
-                                                    self.parameters.data_splitting_3d[1],
-                                                    self.parameters.data_splitting_3d[2]),
+                                                    dimensions[0],
+                                                    dimensions[1],
+                                                    dimensions[2]),
                                                    dtype=np.float32)
             self.validation_data_outputs = np.zeros((nr_batches,
                                                      self.get_output_dimension(),
-                                                     self.parameters.data_splitting_3d[0],
-                                                     self.parameters.data_splitting_3d[1],
-                                                     self.parameters.data_splitting_3d[2]),
+                                                     dimensions[0],
+                                                     dimensions[1],
+                                                     dimensions[2]),
                                                     dtype=np.float32)
         else:
             # TODO: Get rid of this.
@@ -722,20 +728,20 @@ class DataHandler:
             self.validation_data_outputs = np.zeros(0, dtype=np.float32)
 
         if self.nr_test_data > 0:
-            nr_batches = self.nr_validation_snapshots * \
+            nr_batches = self.nr_test_data * \
                          self.number_of_fractional_volumes
 
             self.test_data_inputs = np.zeros((nr_batches,
                                               self.get_input_dimension(),
-                                              self.parameters.data_splitting_3d[0],
-                                              self.parameters.data_splitting_3d[1],
-                                              self.parameters.data_splitting_3d[2]),
+                                              dimensions[0],
+                                              dimensions[1],
+                                              dimensions[2]),
                                              dtype=np.float32)
             self.test_data_outputs = np.zeros((nr_batches,
                                                self.get_output_dimension(),
-                                               self.parameters.data_splitting_3d[0],
-                                               self.parameters.data_splitting_3d[1],
-                                               self.parameters.data_splitting_3d[2]),
+                                               dimensions[0],
+                                               dimensions[1],
+                                               dimensions[2]),
                                               dtype=np.float32)
 
     def __parametrize_scalers(self):
@@ -845,76 +851,6 @@ class DataHandler:
 
         printout("Output scaler parametrized.", min_verbosity=1)
 
-    # def __load_training_data_into_ram(self):
-    #     """Load the training data into RAM."""
-    #     # INPUTS.
-    #     self.__load_data()
-    #
-    #     # Outputs.
-    #     training_snapshot = 0
-    #     # We need to perform the data scaling over the entirety of
-    #     # the training data.
-    #     for snapshot in self.parameters.snapshot_directories_list:
-    #
-    #         # Data scaling is only performed on the training data sets.
-    #         if snapshot.snapshot_function == "tr":
-    #             if self.number_of_fractional_volumes > 1:
-    #                 array = np.zeros([self.grid_dimension[0],
-    #                                   self.grid_dimension[1],
-    #                                   self.grid_dimension[2],
-    #                                   self.get_output_dimension()],
-    #                                  dtype=np.float32)
-    #             else:
-    #                 array = self.training_data_outputs[training_snapshot]
-    #             if snapshot.snapshot_type == "numpy":
-    #                 self.target_calculator. \
-    #                     read_from_numpy_file(
-    #                     os.path.join(snapshot.output_npy_directory,
-    #                                  snapshot.output_npy_file),
-    #                                     units=snapshot.output_units,
-    #                 array=array)
-    #             elif snapshot.snapshot_type == "openpmd":
-    #                 array = \
-    #                 self.target_calculator. \
-    #                     read_from_openpmd_file(
-    #                     os.path.join(snapshot.output_npy_directory,
-    #                                  snapshot.output_npy_file))
-    #             else:
-    #                 raise Exception("Unknown snapshot file type.")
-    #             training_snapshot += 1
-    #             if self.parameters.data_dimensions == "3d":
-    #                 if self.parameters.data_splitting_3d[0] != 0 and \
-    #                    self.parameters.data_splitting_3d[1] != 0 and \
-    #                    self.parameters.data_splitting_3d[2] != 0:
-    #
-    #                     # TODO: Make efficient.
-    #                     in_snapshot_counter = training_snapshot * \
-    #                                           self.number_of_fractional_volumes
-    #                     for x in range(0, self.x_fractions):
-    #                         for y in range(0, self.y_fractions):
-    #                             for z in range(0, self.z_fractions):
-    #                                 tmp_tmp = array[x*self.parameters.data_splitting_3d[0]:(x+1)*self.parameters.data_splitting_3d[0],
-    #                                                 y*self.parameters.data_splitting_3d[1]:(y+1)*self.parameters.data_splitting_3d[1],
-    #                                                 z*self.parameters.data_splitting_3d[2]:(z+1)*self.parameters.data_splitting_3d[2],:]
-    #
-    #                                 tmp_tmp = tmp_tmp.transpose([3, 0, 1, 2])
-    #                                 self.training_data_outputs[in_snapshot_counter] = tmp_tmp
-    #                                 in_snapshot_counter += 1
-    #                 else:
-    #                     self.training_data_outputs[training_snapshot] = \
-    #                         array.transpose([3, 0, 1, 2])
-    #
-    #     # The scalers will later operate on torch Tensors so we have to
-    #     # make sure they are fitted on
-    #     # torch Tensors as well. Preprocessing the numpy data as follows
-    #     # does NOT load it into memory, see
-    #     # test/tensor_memory.py
-    #     if self.parameters.data_dimensions == "1d":
-    #         self.training_data_outputs = self.training_data_outputs.reshape(
-    #             [self.nr_training_data, self.get_output_dimension()])
-    #     self.training_data_outputs = \
-    #         torch.from_numpy(self.training_data_outputs).float()
-
     def __build_datasets(self):
         """Build the DataSets that are used during training."""
         if self.parameters.use_lazy_loading:
@@ -992,8 +928,9 @@ class DataHandler:
         else:
             self.__load_data("va", "input")
             self.__load_data("va", "output")
-            self.__load_data("te", "input")
-            self.__load_data("te", "output")
+            if self.nr_test_data != 0:
+                self.__load_data("te", "input")
+                self.__load_data("te", "output")
 
             if self.nr_test_data != 0:
                 self.input_data_scaler.transform(self.test_data_inputs)
@@ -1037,7 +974,7 @@ class DataHandler:
         if data_type != "output" and data_type != "input":
             raise Exception("Unknown data type detected.")
         if self.parameters.data_dimensions == "3d":
-            self.__load_data_3d()
+            self.__load_data_3d(function, data_type)
             return
 
         # Extracting all the information pertaining to the data set.
@@ -1123,6 +1060,117 @@ class DataHandler:
 
             if function == "te":
                 self.test_data_outputs = self.test_data_outputs.reshape([self.nr_test_data, feature_dimension])
+                self.test_data_outputs = torch.from_numpy(self.test_data_outputs).float()
+
+    def __load_data_3d(self, function, data_type):
+        """
+        Loads data into the appropriate arrays for 3D data (CNN).
+
+        Also transforms them into torch tensors.
+        Parameters
+        ----------
+        function : string
+            Can be "tr", "va" or "te.
+
+        data_type : string
+            Can be "input" or "output".
+        """
+        if function != "tr" and function != "te" and function != "va":
+            raise Exception("Unknown snapshot type detected.")
+        if data_type != "output" and data_type != "input":
+            raise Exception("Unknown data type detected.")
+
+        # Extracting all the information pertaining to the data set.
+        if data_type == "input":
+            if function == "tr":
+                array = "training_data_inputs"
+                calculator = self.descriptor_calculator
+
+            if function == "va":
+                array = "validation_data_inputs"
+                calculator = self.descriptor_calculator
+
+            if function == "te":
+                array = "test_data_inputs"
+                calculator = self.descriptor_calculator
+
+        if data_type == "output":
+            if function == "tr":
+                array = "training_data_outputs"
+                calculator = self.target_calculator
+
+            if function == "va":
+                array = "validation_data_outputs"
+                calculator = self.target_calculator
+
+            if function == "te":
+                array = "test_data_outputs"
+                calculator = self.target_calculator
+
+        snapshot_counter = 0
+        for snapshot in self.parameters.snapshot_directories_list:
+
+            # Data scaling is only performed on the training data sets.
+            if snapshot.snapshot_function == function:
+                if data_type == "input":
+                    file = os.path.join(snapshot.input_npy_directory,
+                                        snapshot.input_npy_file)
+                    units = snapshot.input_units
+                else:
+                    file = os.path.join(snapshot.output_npy_directory,
+                                        snapshot.output_npy_file)
+                    units = snapshot.output_units
+
+                if snapshot.snapshot_type == "numpy":
+                    tmp = calculator.read_from_numpy_file(file, units=units)
+                elif snapshot.snapshot_type == "openpmd":
+                    tmp = calculator.read_from_openpmd_file(file, units=units)
+                else:
+                    raise Exception("Unknown snapshot file type.")
+
+                if self.parameters.data_splitting_3d[0] != 0 and \
+                   self.parameters.data_splitting_3d[1] != 0 and \
+                   self.parameters.data_splitting_3d[2] != 0:
+
+                    in_snapshot_counter = snapshot_counter * \
+                                          self.number_of_fractional_volumes
+
+                    # TODO: Make efficient.
+                    for x in range(0, self.x_fractions):
+                        for y in range(0, self.y_fractions):
+                            for z in range(0, self.z_fractions):
+                                tmp_tmp = tmp[x*self.parameters.data_splitting_3d[0]:(x+1)*self.parameters.data_splitting_3d[0],
+                                              y*self.parameters.data_splitting_3d[1]:(y+1)*self.parameters.data_splitting_3d[1],
+                                              z*self.parameters.data_splitting_3d[2]:(z+1)*self.parameters.data_splitting_3d[2],:]
+
+                                getattr(self, array)[in_snapshot_counter] = tmp_tmp.transpose([3, 0, 1, 2])
+                else:
+                    getattr(self, array)[snapshot_counter] = tmp.transpose([3, 0, 1, 2])
+                snapshot_counter += 1
+
+        # The scalers will later operate on torch Tensors so we have to
+        # make sure they are fitted on
+        # torch Tensors as well. Preprocessing the numpy data as follows
+        # does NOT load it into memory, see
+        # test/tensor_memory.py
+        if data_type == "input":
+            if function == "tr":
+                self.training_data_inputs = torch.from_numpy(self.training_data_inputs).float()
+
+            if function == "va":
+                self.validation_data_inputs = torch.from_numpy(self.validation_data_inputs).float()
+
+            if function == "te":
+                self.test_data_inputs = torch.from_numpy(self.test_data_inputs).float()
+
+        if data_type == "output":
+            if function == "tr":
+                self.training_data_outputs = torch.from_numpy(self.training_data_outputs).float()
+
+            if function == "va":
+                self.validation_data_outputs = torch.from_numpy(self.validation_data_outputs).float()
+
+            if function == "te":
                 self.test_data_outputs = torch.from_numpy(self.test_data_outputs).float()
 
     def __raw_numpy_to_converted_numpy(self, numpy_array, data_type="in",

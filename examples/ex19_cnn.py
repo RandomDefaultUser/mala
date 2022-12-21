@@ -17,7 +17,7 @@ params.descriptors.descriptors_contain_xyz = False
 params.network.nn_type = "locality-cnn"
 params.running.max_number_epochs = 500
 params.running.learning_rate = 1
-params.data.data_splitting_3d = [0, 0, 0]
+# params.data.data_splitting_3d = [3, 3, 3]
 
 data_handler = mala.DataHandler(params)
 
@@ -37,11 +37,13 @@ network = mala.Network(params)
 trainer = mala.Trainer(params, network, data_handler)
 trainer.train_network()
 
+params.data.use_lazy_loading = True
 data_handler.clear_data()
 data_handler.add_snapshot("gaussians3.in.npy", inpath,
                           "Be_snapshot3.out.npy", outpath,
                           add_snapshot_as="te", output_units="1/(eV*Bohr^3)")
 data_handler.prepare_data(reparametrize_scaler=False)
+
 tester = mala.Tester(params, network, data_handler)
 actual_ldos, predicted_ldos = tester.test_snapshot(0)
 ldos_calculator: mala.LDOS
