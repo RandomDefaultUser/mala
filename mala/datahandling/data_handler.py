@@ -728,7 +728,7 @@ class DataHandler:
             self.validation_data_outputs = np.zeros(0, dtype=np.float32)
 
         if self.nr_test_data > 0:
-            nr_batches = self.nr_test_data * \
+            nr_batches = self.nr_test_snapshots * \
                          self.number_of_fractional_volumes
 
             self.test_data_inputs = np.zeros((nr_batches,
