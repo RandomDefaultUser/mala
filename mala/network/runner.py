@@ -156,7 +156,7 @@ class Runner:
                         x_counter += 1
 
         if self.data.parameters.data_dimensions == "3d":
-            predicted_outputs = np.zeros((self.data.get_output_dimension(),
+            predicted_outputs = np.zeros((self.data.output_dimension,
                                           self.data.grid_dimension[0],
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
@@ -166,7 +166,7 @@ class Runner:
 
         else:
             predicted_outputs = np.zeros((self.data.grid_size,
-                                          self.data.get_output_dimension()))
+                                          self.data.output_dimension))
 
         offset = snapshot_number * self.data.grid_size
         if self.data.parameters.data_dimensions == "3d":
