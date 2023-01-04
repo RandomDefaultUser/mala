@@ -52,14 +52,14 @@ ldos_calculator.read_additional_calculation_data("qe.out", outpath+"Be_snapshot1
 
 ldos_calculator.read_from_array(actual_ldos)
 density_calculator = mala.Density.from_ldos_calculator(ldos_calculator)
-density_calculator.write_as_cube("actual.cube", density_calculator.density)
+density_calculator.write_to_cube("actual.cube", density_calculator.density)
 
 ldos_calculator.read_from_array(predicted_ldos)
 density_calculator = mala.Density.from_ldos_calculator(ldos_calculator)
-density_calculator.write_as_cube("cnn.cube", density_calculator.density)
+density_calculator.write_to_cube("cnn.cube", density_calculator.density)
 
 gaussians = np.load(inpath+"gaussians_optimized1.in.npy").reshape([18*18*27, 1])
-density_calculator.write_as_cube("gaussians.cube", gaussians)
+density_calculator.write_to_cube("gaussians.cube", gaussians)
 
 
 # print(ldos_calculator.number_of_electrons, ldos_calculator.band_energy)

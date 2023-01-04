@@ -618,16 +618,6 @@ class DataHandler:
             elif self.parameters.data_dimensions == "3d":
                 self.__allocate_3d_arrays()
 
-            # Reordering the lists.
-        snapshot_order = {'tr': 0, 'va': 1, 'te': 2}
-        self.parameters.snapshot_directories_list.sort(key=lambda d:
-        snapshot_order
-        [d.snapshot_function])
-            if self.parameters.data_dimensions == "1d":
-                self.__allocate_1d_arrays()
-            elif self.parameters.data_dimensions == "3d":
-                self.__allocate_3d_arrays()
-
         # Reordering the lists.
         snapshot_order = {'tr': 0, 'va': 1, 'te': 2}
         self.parameters.snapshot_directories_list.sort(key=lambda d:
@@ -691,8 +681,7 @@ class DataHandler:
                                                    self.output_dimension),
                                                   dtype=np.float32)
 
-
-def __allocate_3d_arrays(self):
+    def __allocate_3d_arrays(self):
         if self.parameters.data_splitting_3d[0] != 0 and \
            self.parameters.data_splitting_3d[1] != 0 and \
            self.parameters.data_splitting_3d[2] != 0:
@@ -703,16 +692,17 @@ def __allocate_3d_arrays(self):
             nr_batches = self.nr_training_snapshots * \
                          self.number_of_fractional_volumes
             self.training_data_inputs = np.zeros((nr_batches,
-                                                  self.get_input_dimension(),
+                                                  self.input_dimension,
                                                   dimensions[0],
                                                   dimensions[1],
                                                   dimensions[2]),
                                                  dtype=np.float32)
             self.training_data_outputs = np.zeros((nr_batches,
-                                                   self.get_output_dimension(),
+                                                   self.output_dimension,
                                                    dimensions[0],
                                                    dimensions[1],
                                                    dimensions[2]),
+                                                  dtype=np.float32)
         else:
             # TODO: Get rid of this.
             # Currently needed because we don't check if the
@@ -724,13 +714,13 @@ def __allocate_3d_arrays(self):
                          self.number_of_fractional_volumes
 
             self.validation_data_inputs = np.zeros((nr_batches,
-                                                    self.get_input_dimension(),
+                                                    self.input_dimension,
                                                     dimensions[0],
                                                     dimensions[1],
                                                     dimensions[2]),
                                                    dtype=np.float32)
             self.validation_data_outputs = np.zeros((nr_batches,
-                                                     self.get_output_dimension(),
+                                                     self.output_dimension,
                                                      dimensions[0],
                                                      dimensions[1],
                                                      dimensions[2]),
@@ -747,13 +737,13 @@ def __allocate_3d_arrays(self):
                          self.number_of_fractional_volumes
 
             self.test_data_inputs = np.zeros((nr_batches,
-                                              self.get_input_dimension(),
+                                              self.input_dimension,
                                               dimensions[0],
                                               dimensions[1],
                                               dimensions[2]),
                                              dtype=np.float32)
             self.test_data_outputs = np.zeros((nr_batches,
-                                               self.get_output_dimension(),
+                                               self.output_dimension,
                                                dimensions[0],
                                                dimensions[1],
                                                dimensions[2]),
@@ -877,7 +867,7 @@ def __allocate_3d_arrays(self):
         """
         if function != "training" and function != "test" and function != "validation":
             raise Exception("Unknown snapshot type detected.")
-        if data_type != "output" and data_type != "input":
+        if data_type != "outputs" and data_type != "inputs":
             raise Exception("Unknown data type detected.")
 
         # Extracting all the information pertaining to the data set.
@@ -895,7 +885,7 @@ def __allocate_3d_arrays(self):
 
             # Data scaling is only performed on the training data sets.
             if snapshot.snapshot_function == function[0:2]:
-                if data_type == "input":
+                if data_type == "inputs":
                     file = os.path.join(snapshot.input_npy_directory,
                                         snapshot.input_npy_file)
                     units = snapshot.input_units
@@ -938,42 +928,29 @@ def __allocate_3d_arrays(self):
         # test/tensor_memory.py
         if data_type == "inputs":
             if function == "training":
-                self.training_data_inputs = self.training_data_inputs.\
-                    reshape([self.nr_training_data, feature_dimension])
                 self.training_data_inputs = torch.\
                     from_numpy(self.training_data_inputs).float()
 
             if function == "validation":
-                self.validation_data_inputs = self.validation_data_inputs.\
-                    reshape([self.nr_validation_data, feature_dimension])
                 self.validation_data_inputs = torch.\
                     from_numpy(self.validation_data_inputs).float()
 
             if function == "test":
-                self.test_data_inputs = self.test_data_inputs.\
-                    reshape([self.nr_test_data, feature_dimension])
                 self.test_data_inputs = torch.\
                     from_numpy(self.test_data_inputs).float()
 
         if data_type == "outputs":
             if function == "training":
-                self.training_data_outputs = self.training_data_outputs.\
-                    reshape([self.nr_training_data, feature_dimension])
                 self.training_data_outputs = torch.\
                     from_numpy(self.training_data_outputs).float()
 
             if function == "validation":
-                self.validation_data_outputs = self.validation_data_outputs.\
-                    reshape([self.nr_validation_data, feature_dimension])
                 self.validation_data_outputs = torch.\
                     from_numpy(self.validation_data_outputs).float()
 
             if function == "test":
-                self.test_data_outputs = self.test_data_outputs.\
-                    reshape([self.nr_test_data, feature_dimension])
                 self.test_data_outputs = torch.\
                     from_numpy(self.test_data_outputs).float()
-
 
     def __build_datasets(self):
         """Build the DataSets that are used during training."""
