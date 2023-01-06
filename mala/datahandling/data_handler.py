@@ -125,7 +125,7 @@ class DataHandler:
         Torch tensor holding all scaled testing data output.
         """
 
-    def get_input_dimension(self):
+    def input_dimension(self):
         """
         Get the dimension of the input vector.
 
@@ -136,7 +136,7 @@ class DataHandler:
         """
         return self.input_dimension
 
-    def get_output_dimension(self):
+    def output_dimension(self):
         """
         Get the dimension of the output vector.
 
@@ -322,9 +322,9 @@ class DataHandler:
         # If desired, the dimensions can be changed.
         if convert3Dto1D:
             if data_type == "in":
-                data_dimension = self.get_input_dimension()
+                data_dimension = self.input_dimension()
             else:
-                data_dimension = self.get_output_dimension()
+                data_dimension = self.output_dimension()
             desired_dimensions = [self.grid_size, data_dimension]
         else:
             desired_dimensions = None
@@ -629,7 +629,7 @@ class DataHandler:
                         convert_units(1, snapshot.input_units)
                     tmp = tmp.astype(np.float32)
                     tmp = tmp.reshape([self.grid_size,
-                                       self.get_input_dimension()])
+                                       self.input_dimension()])
                     tmp = torch.from_numpy(tmp).float()
                     self.input_data_scaler.incremental_fit(tmp)
 
@@ -674,7 +674,7 @@ class DataHandler:
                         convert_units(1, snapshot.output_units)
                     tmp = tmp.astype(np.float32)
                     tmp = tmp.reshape([self.grid_size,
-                                       self.get_output_dimension()])
+                                       self.output_dimension()])
                     tmp = torch.from_numpy(tmp).float()
                     self.output_data_scaler.incremental_fit(tmp)
                 i += 1
@@ -726,7 +726,7 @@ class DataHandler:
         if self.parameters.data_dimensions == "1d":
             self.training_data_inputs = \
                 self.training_data_inputs.reshape(
-                    [self.nr_training_data, self.get_input_dimension()])
+                    [self.nr_training_data, self.input_dimension()])
         self.training_data_inputs = \
             torch.from_numpy(self.training_data_inputs).float()
 
@@ -761,7 +761,7 @@ class DataHandler:
             self.training_data_outputs.astype(np.float32)
         if self.parameters.data_dimensions == "1d":
             self.training_data_outputs = self.training_data_outputs.reshape(
-                [self.nr_training_data, self.get_output_dimension()])
+                [self.nr_training_data, self.output_dimension()])
         self.training_data_outputs = \
             torch.from_numpy(self.training_data_outputs).float()
 
@@ -772,7 +772,7 @@ class DataHandler:
             # Create the lazy loading data sets.
             if self.parameters.use_clustering:
                 self.training_data_set = LazyLoadDatasetClustered(
-                    self.get_input_dimension(), self.get_output_dimension(),
+                    self.input_dimension(), self.output_dimension(),
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
                     self.grid_dimension, self.grid_size,
@@ -780,7 +780,7 @@ class DataHandler:
                     self.parameters.train_ratio,
                     self.parameters.sample_ratio)
                 self.validation_data_set = LazyLoadDataset(
-                    self.get_input_dimension(), self.get_output_dimension(),
+                    self.input_dimension(), self.output_dimension(),
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
                     self.grid_dimension, self.grid_size,
@@ -788,8 +788,8 @@ class DataHandler:
 
                 if self.nr_test_data != 0:
                     self.test_data_set = LazyLoadDataset(
-                        self.get_input_dimension(),
-                        self.get_output_dimension(),
+                        self.input_dimension(),
+                        self.output_dimension(),
                         self.input_data_scaler, self.output_data_scaler,
                         self.descriptor_calculator, self.target_calculator,
                         self.grid_dimension, self.grid_size,
@@ -798,13 +798,13 @@ class DataHandler:
 
             else:
                 self.training_data_set = LazyLoadDataset(
-                    self.get_input_dimension(), self.get_output_dimension(),
+                    self.input_dimension(), self.output_dimension(),
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
                     self.grid_dimension, self.grid_size,
                     self.use_horovod)
                 self.validation_data_set = LazyLoadDataset(
-                    self.get_input_dimension(), self.get_output_dimension(),
+                    self.input_dimension(), self.output_dimension(),
                     self.input_data_scaler, self.output_data_scaler,
                     self.descriptor_calculator, self.target_calculator,
                     self.grid_dimension, self.grid_size,
@@ -812,7 +812,7 @@ class DataHandler:
 
                 if self.nr_test_data != 0:
                     self.test_data_set = LazyLoadDataset(
-                        self.get_input_dimension(), self.get_output_dimension(),
+                        self.input_dimension(), self.output_dimension(),
                         self.input_data_scaler, self.output_data_scaler,
                         self.descriptor_calculator, self.target_calculator,
                         self.grid_dimension, self.grid_size,
@@ -898,7 +898,7 @@ class DataHandler:
                 if self.parameters.data_dimensions == "1d":
                     self.test_data_inputs = \
                         self.test_data_inputs.reshape(
-                            [self.nr_test_data, self.get_input_dimension()])
+                            [self.nr_test_data, self.input_dimension()])
                 self.test_data_inputs = \
                     torch.from_numpy(self.test_data_inputs).float()
                 self.test_data_inputs = \
@@ -911,7 +911,7 @@ class DataHandler:
             if self.parameters.data_dimensions == "1d":
                 self.validation_data_inputs = \
                     self.validation_data_inputs.reshape(
-                        [self.nr_validation_data, self.get_input_dimension()])
+                        [self.nr_validation_data, self.input_dimension()])
             self.validation_data_inputs = \
                 torch.from_numpy(self.validation_data_inputs).float()
             self.validation_data_inputs = \
@@ -926,7 +926,7 @@ class DataHandler:
                 if self.parameters.data_dimensions == "1d":
                     self.test_data_outputs = \
                         self.test_data_outputs.reshape(
-                            [self.nr_test_data, self.get_output_dimension()])
+                            [self.nr_test_data, self.output_dimension()])
                 self.test_data_outputs = \
                     torch.from_numpy(self.test_data_outputs).float()
                 self.test_data_outputs = \
@@ -939,7 +939,7 @@ class DataHandler:
             if self.parameters.data_dimensions == "1d":
                 self.validation_data_outputs = \
                     self.validation_data_outputs.reshape(
-                        [self.nr_validation_data, self.get_output_dimension()])
+                        [self.nr_validation_data, self.output_dimension()])
             self.validation_data_outputs = \
                 torch.from_numpy(self.validation_data_outputs).float()
             self.validation_data_outputs = \
