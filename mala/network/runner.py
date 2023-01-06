@@ -105,7 +105,7 @@ class Runner:
 
             # Reordering in the 3D case.
             else:
-                actual_outputs = np.zeros((self.data.get_output_dimension(),
+                actual_outputs = np.zeros((self.data.output_dimension,
                                           self.data.grid_dimension[0],
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
@@ -133,7 +133,7 @@ class Runner:
                         as_numpy=True)
             # Reordering in the 3D case.
             else:
-                actual_outputs = np.zeros((self.data.get_output_dimension(),
+                actual_outputs = np.zeros((self.data.output_dimension,
                                           self.data.grid_dimension[0],
                                           self.data.grid_dimension[1],
                                           self.data.grid_dimension[2]))
