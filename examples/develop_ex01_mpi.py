@@ -38,8 +38,8 @@ test_parameters.running.mini_batch_size = 40
 test_parameters.running.learning_rate = 0.00001
 test_parameters.running.trainingtype = "Adam"
 test_parameters.verbosity = 0
-test_parameters.data.use_lazy_loading = True
-
+test_parameters.use_mpi = True
+test_
 
 ####################
 # DATA
@@ -52,11 +52,11 @@ data_handler = mala.DataHandler(test_parameters)
 data_handler.add_snapshot("Al_debug_2k_nr0.in.npy", data_path,
                           "Al_debug_2k_nr0.out.npy", data_path, "tr",
                           output_units="1/(Ry*Bohr^3)")
+data_handler.add_snapshot("Al_debug_2k_nr2.in.npy", data_path,
+                          "Al_debug_2k_nr2.out.npy", data_path, "tr",
+                          output_units="1/(Ry*Bohr^3)")
 data_handler.add_snapshot("Al_debug_2k_nr1.in.npy", data_path,
                           "Al_debug_2k_nr1.out.npy", data_path, "va",
-                          output_units="1/(Ry*Bohr^3)")
-data_handler.add_snapshot("Al_debug_2k_nr2.in.npy", data_path,
-                          "Al_debug_2k_nr2.out.npy", data_path, "te",
                           output_units="1/(Ry*Bohr^3)")
 data_handler.prepare_data()
 printout("Read data: DONE.")
@@ -91,5 +91,5 @@ printout("Training: DONE.")
 # Print the used parameters and check whether the loss decreased enough.
 ####################
 
-#printout("Parameters used for this experiment:")
+printout("Parameters used for this experiment:")
 #test_parameters.show()

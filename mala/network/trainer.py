@@ -1,4 +1,5 @@
 """Trainer class for training a network."""
+import itertools
 import os
 import time
 from datetime import datetime
@@ -14,12 +15,19 @@ from torch import optim
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from mala.common.parallelizer import printout, get_rank, barrier, get_size, get_comm
 from mala.common.parameters import Parameters
 from mala.common.parameters import printout
 from mala.datahandling.data_handler import DataHandler
 from mala.datahandling.data_scaler import DataScaler
 from mala.network.network import Network
 from mala.network.runner import Runner
+
+# TODO: Where to define the tags? Maybe some common file like parallelizer.py?
+TAG_BATCH_READY = 12345
+TAG_GPU_START = 23456
+TAG_GPU_FREE = 34567
+TAG_NETWORK_EXCHANGE = 420969
 
 
 class Trainer(Runner):
@@ -273,13 +281,68 @@ class Trainer(Runner):
             if self.parameters_full.use_horovod:
                 self.train_sampler.set_epoch(epoch)
 
-            for batchid, (inputs, outputs) in \
-                    enumerate(self.training_data_loader):
-                inputs = inputs.to(self.parameters._configuration["device"])
-                outputs = outputs.to(self.parameters._configuration["device"])
-                training_loss.append(self.__process_mini_batch(self.network,
-                                                               inputs,
-                                                               outputs))
+            if self.parameters._configuration["mpi"]:
+                comm = get_comm()
+                rank = get_rank()
+
+                batches_per_rank = self.data.grid_size / self.parameters.mini_batch_size
+                n_snapshots = int(len(self.training_data_loader) / batches_per_rank)
+
+                assert n_snapshots == get_size(), \
+                    f"This version allows one MPI rank per snapshot only. n_snapshots = {n_snapshots}"
+
+                n_data_points = len(self.data.training_data_set)
+                points_per_rank = n_data_points / n_snapshots
+                points_start = int(rank * points_per_rank)
+                points_end = int((rank+1) * points_per_rank)
+
+                loaded_data = []
+                batches_per_dataset = int((points_end-points_start)/self.parameters.mini_batch_size)
+                for i in range(0, batches_per_dataset):
+                    b_start = points_start + i * self.parameters.mini_batch_size
+                    b_end = min(points_end, b_start + self.parameters.mini_batch_size)
+                    loaded_data.append(self.data.training_data_set[b_start:b_end])
+
+                if get_rank() == 0:
+                    # Train my part
+                    for inputs, outputs in loaded_data:
+                        training_loss.append(self.__process_mini_batch(self.network, inputs, outputs))
+                    comm.send(self.network.state_dict(), dest=1, tag=TAG_NETWORK_EXCHANGE)
+                    # Let the others use the GPU
+                    for i in range(1, get_size()):
+                        comm.recv(source=i, tag=TAG_BATCH_READY)  # Wait until i-th process' data is ready
+                        comm.send(True, dest=i, tag=TAG_GPU_START)  # Tell the i-th process the GPU is available
+                        comm.recv(source=i, tag=TAG_GPU_FREE)  # Wait until the i-th process releases the GPU
+                # Synchronous mode - rank 0 is receiving, therefore it cannot send
+                else:
+                    # Get network weights from preceding rank
+                    self.network.load_state_dict(comm.recv(source=get_rank()-1, tag=TAG_NETWORK_EXCHANGE))
+                    comm.send(True, dest=0, tag=TAG_BATCH_READY)  # Signal my data is ready
+                    comm.recv(source=0, tag=TAG_GPU_START)  # Wait until the GPU is free
+                    for inputs, outputs in loaded_data:
+                        training_loss.append(self.__process_mini_batch(self.network, inputs, outputs))
+                    comm.send(True, dest=0, tag=TAG_GPU_FREE)   # Release the GPU
+                    if get_rank() < get_size() - 1:
+                        # Send network weights to next rank
+                        comm.send(self.network.state_dict(), dest=get_rank()+1, tag=TAG_NETWORK_EXCHANGE)
+
+                # Synchronize trained network
+                if get_rank() == get_size() - 1:
+                    for i in range(0, get_size()-1):
+                        comm.send(self.network.state_dict(), dest=i, tag=TAG_NETWORK_EXCHANGE)
+                else:
+                    self.network.load_state_dict(comm.recv(source=get_size()-1, tag=TAG_NETWORK_EXCHANGE))
+                # Synchronize training_loss
+                training_loss = comm.allgather(training_loss)
+
+            else:
+                for batchid, (inputs, outputs) in \
+                        enumerate(self.training_data_loader):
+                    inputs = inputs.to(self.parameters._configuration["device"])
+                    outputs = outputs.to(self.parameters._configuration["device"])
+                    training_loss.append(self.__process_mini_batch(self.network,
+                                                                   inputs,
+                                                                   outputs))
             training_loss = np.mean(training_loss)
 
             # Calculate the validation loss. and output it.
@@ -320,8 +383,9 @@ class Trainer(Runner):
 
             # Mix the DataSets up (this function only does something
             # in the lazy loading case).
-            if self.parameters.use_shuffling_for_samplers:
-                self.data.mix_datasets()
+            #TODO: Disabled for MPI testing. Shuffle reloads file 0, and invalidates lazyloader caches
+#            if self.parameters.use_shuffling_for_samplers:
+#                self.data.mix_datasets()
 
             # If a scheduler is used, update it.
             if self.scheduler is not None:
@@ -399,7 +463,7 @@ class Trainer(Runner):
             kwargs['pin_memory'] = True
 
         # Read last epoch
-        if optimizer_dict is not None: 
+        if optimizer_dict is not None:
             self.last_epoch = optimizer_dict['epoch']+1
 
         # Scale the learning rate according to horovod.
