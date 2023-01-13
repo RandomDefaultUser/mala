@@ -202,7 +202,8 @@ class ObjectiveBase:
                 pass
 
             elif "ff_neurons_layer" in par.name:
-                if self.params.network.nn_type == "feed-forward":
+                if self.params.network.nn_type == "feed-forward" or \
+                   self.params.network.nn_type == "locality-cnn":
                     # Check for zero neuron layers; These indicate layers
                     # that can be left out.
                     layer_size = par.get_parameter(trial)
