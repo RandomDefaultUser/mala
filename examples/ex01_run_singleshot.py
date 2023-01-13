@@ -5,14 +5,14 @@ from mala import printout
 
 from mala.datahandling.data_repo import data_repo_path
 data_path = os.path.join(data_repo_path, "Al36")
-
+import time
 """
 ex01_run_singleshot.py: Shows how a neural network can be trained on material
 data using this framework. It uses preprocessed data, that is read in
 from *.npy files.
 """
 
-
+start_time = time.time()
 ####################
 # PARAMETERS
 # All parameters are handled from a central parameters class that
@@ -33,7 +33,7 @@ test_parameters.data.output_rescaling_type = "normal"
 test_parameters.network.layer_activations = ["ReLU"]
 
 # Specify the training parameters.
-test_parameters.running.max_number_epochs = 200
+test_parameters.running.max_number_epochs = 500
 test_parameters.running.mini_batch_size = 40
 test_parameters.running.learning_rate = 0.00001
 test_parameters.running.trainingtype = "Adam"
@@ -53,10 +53,10 @@ data_handler.add_snapshot("Al_debug_2k_nr0.in.npy", data_path,
                           "Al_debug_2k_nr0.out.npy", data_path, "tr",
                           output_units="1/(Ry*Bohr^3)")
 data_handler.add_snapshot("Al_debug_2k_nr1.in.npy", data_path,
-                          "Al_debug_2k_nr1.out.npy", data_path, "va",
+                          "Al_debug_2k_nr1.out.npy", data_path, "tr",
                           output_units="1/(Ry*Bohr^3)")
 data_handler.add_snapshot("Al_debug_2k_nr2.in.npy", data_path,
-                          "Al_debug_2k_nr2.out.npy", data_path, "te",
+                          "Al_debug_2k_nr2.out.npy", data_path, "va",
                           output_units="1/(Ry*Bohr^3)")
 data_handler.prepare_data()
 printout("Read data: DONE.")
@@ -83,7 +83,9 @@ printout("Network setup: DONE.")
 ####################
 
 printout("Starting training.")
+training_time = time.time()
 test_trainer.train_network()
+printout(time.time() - training_time)
 printout("Training: DONE.")
 
 ####################
@@ -93,3 +95,4 @@ printout("Training: DONE.")
 
 #printout("Parameters used for this experiment:")
 #test_parameters.show()
+printout(time.time()-start_time)

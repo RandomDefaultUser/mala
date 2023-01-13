@@ -6,12 +6,14 @@ from mala import printout
 from mala.datahandling.data_repo import data_repo_path
 data_path = os.path.join(data_repo_path, "Al36")
 
+import time
 """
 ex01_run_singleshot.py: Shows how a neural network can be trained on material
 data using this framework. It uses preprocessed data, that is read in
 from *.npy files.
 """
 
+start_time = time.time()
 
 ####################
 # PARAMETERS
@@ -33,13 +35,13 @@ test_parameters.data.output_rescaling_type = "normal"
 test_parameters.network.layer_activations = ["ReLU"]
 
 # Specify the training parameters.
-test_parameters.running.max_number_epochs = 200
+test_parameters.running.max_number_epochs = 500
 test_parameters.running.mini_batch_size = 40
 test_parameters.running.learning_rate = 0.00001
 test_parameters.running.trainingtype = "Adam"
 test_parameters.verbosity = 0
 test_parameters.use_mpi = True
-test_
+test_parameters.data.use_lazy_loading = True
 
 ####################
 # DATA
@@ -83,7 +85,9 @@ printout("Network setup: DONE.")
 ####################
 
 printout("Starting training.")
+training_time = time.time()
 test_trainer.train_network()
+printout(time.time() - training_time)
 printout("Training: DONE.")
 
 ####################
@@ -93,3 +97,4 @@ printout("Training: DONE.")
 
 printout("Parameters used for this experiment:")
 #test_parameters.show()
+printout(time.time()-start_time)
