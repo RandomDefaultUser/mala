@@ -324,6 +324,10 @@ class Trainer(Runner):
                     comm.send(True, dest=0, tag=TAG_BATCH_READY)  # Signal my data is ready
                     comm.recv(source=0, tag=TAG_GPU_START)  # Wait until the GPU is free
                     for inputs, outputs in loaded_data:
+                        inputs = inputs.to(
+                            self.parameters._configuration["device"])
+                        outputs = outputs.to(
+                            self.parameters._configuration["device"])
                         training_loss.append(self.__process_mini_batch(self.network, inputs, outputs))
                     comm.send(True, dest=0, tag=TAG_GPU_FREE)   # Release the GPU
                     if get_rank() < get_size() - 1:
