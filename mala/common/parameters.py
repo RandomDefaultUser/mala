@@ -1214,6 +1214,8 @@ class Parameters:
     def device(self, value):
         device_id = get_local_rank()
         if self.use_gpu:
+            if self.use_mpi:
+                device_id = 0
             self._device = "cuda:"\
                            f"{device_id}"
         else:
