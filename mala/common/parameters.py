@@ -589,6 +589,7 @@ class ParametersData(ParametersBase):
         self.train_ratio = 0.1
         self.sample_ratio = 0.5
 
+
 class ParametersRunning(ParametersBase):
     """
     Parameters needed for network runs (train, test or inference).

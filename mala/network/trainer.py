@@ -306,6 +306,10 @@ class Trainer(Runner):
                 if get_rank() == 0:
                     # Train my part
                     for inputs, outputs in loaded_data:
+                        inputs = inputs.to(
+                            self.parameters._configuration["device"])
+                        outputs = outputs.to(
+                            self.parameters._configuration["device"])
                         training_loss.append(self.__process_mini_batch(self.network, inputs, outputs))
                     comm.send(self.network.state_dict(), dest=1, tag=TAG_NETWORK_EXCHANGE)
                     # Let the others use the GPU
