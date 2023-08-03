@@ -128,6 +128,18 @@ class DataHandlerBase(ABC):
                             snapshot_type=snapshot_type)
         self.parameters.snapshot_directories_list.append(snapshot)
 
+        # If a calculation output file is provided and NOTHING has been read
+        # in by the target calculator, we read in additional data right here.
+        # This ensures that even if the calculation_output_file is never used
+        # during training (this can happen if, e.g., the ldos MSE loss is used
+        # after training instead of the band energy), the additional
+        # calculation was read in at least once.
+        # We only do it once for performance reasons.
+        if self.target_calculator.atoms is None and calculation_output_file \
+                != "":
+            self.target_calculator.\
+                read_additional_calculation_data(calculation_output_file)
+
     def clear_data(self):
         """
         Reset the entire data pipeline.
