@@ -63,6 +63,22 @@ while maintaining the same prediction accuracy.
 Currently, these options are disabled by default as they are still being tested
 extensively by the MALA team in production. **Yet, activating them is highly recommended!**
 
+Apple Silicon GPU
+~~~~~~~~~~~~~~~~~
+
+If you are using a MacOS system on Apple Silicon, you can use the GPU cores
+therein with
+
+      .. code-block:: python
+
+            parameters = mala.Parameters()
+            parameters.use_mps = True
+
+MPS stands for the Metal Performance Shaders framework, the backend Pytorch
+employs to utilize the Apple Silicon GPU cores. Please note that this option
+only affects training performance, the LAMMPS code acceleration only works with
+CUDA GPUs for now.
+
 Advanced training metrics
 ****************************
 
