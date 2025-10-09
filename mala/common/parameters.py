@@ -36,6 +36,7 @@ class ParametersBase(JSONSerializable):
             "gpu": False,
             "ddp": False,
             "mpi": False,
+            "mps" : False,
             "device": "cpu",
             "openpmd_configuration": {},
             "openpmd_granularity": 1,
@@ -79,6 +80,17 @@ class ParametersBase(JSONSerializable):
             New GPU setting.
         """
         self._configuration["gpu"] = new_gpu
+
+    def _update_mps(self, new_mps):
+        """
+        Propagate new Apple silicon GPU setting to parameter subclasses.
+
+        Parameters
+        ----------
+        new_mps : bool
+            New GPU setting.
+        """
+        self._configuration["mps"] = new_mps
 
     def _update_ddp(self, new_ddp):
         """
@@ -1630,9 +1642,14 @@ class Parameters:
         self.manual_seed = None
 
         # Properties
+        # Needed for first initialization, or else the resetting of the device
+        # fails. This is because we dynamically set the device based on MPS
+        # and GPU values.
+        self._use_mps = False
         self.use_gpu = False
         self.use_ddp = False
         self.use_mpi = False
+        self.use_mps = False
         self.verbosity = 1
         self.device = "cpu"
         self.openpmd_configuration = {}
@@ -1700,6 +1717,10 @@ class Parameters:
         if value is False:
             self._use_gpu = False
         else:
+            # Cannot use CUDA and MPS at the same time.
+            # Also don't think anyone would want that.
+            self.use_mps = False
+
             if torch.cuda.is_available():
                 self._use_gpu = True
             else:
@@ -1722,6 +1743,36 @@ class Parameters:
         self.data._update_gpu(self.use_gpu)
         self.running._update_gpu(self.use_gpu)
         self.hyperparameters._update_gpu(self.use_gpu)
+
+    @property
+    def use_mps(self):
+        """Control whether an Apple silicon GPU is used."""
+        return self._use_mps
+
+    @use_mps.setter
+    def use_mps(self, value):
+        if value is False:
+            self._use_mps = False
+        else:
+            # Cannot use CUDA and MPS at the same time.
+            # Also don't think anyone would want that.
+            self.use_gpu = False
+            if torch.mps.is_available():
+                self._use_mps = True
+            else:
+                parallel_warn(
+                    "GPU requested, but no GPU found. MALA will "
+                    "operate with CPU only."
+                )
+
+        # Invalidate, will be updated in setter.
+        self.device = None
+        self.network._update_mps(self.use_mps)
+        self.descriptors._update_mps(self.use_mps)
+        self.targets._update_mps(self.use_mps)
+        self.data._update_mps(self.use_mps)
+        self.running._update_mps(self.use_mps)
+        self.hyperparameters._update_mps(self.use_mps)
 
     @property
     def use_ddp(self):
@@ -1765,6 +1816,9 @@ class Parameters:
         device_id = get_local_rank()
         if self.use_gpu:
             self._device = "cuda:" f"{device_id}"
+        elif self.use_mps:
+            if torch.mps.is_available():
+                self._device = "mps:" f"{device_id}"
         else:
             self._device = "cpu"
         self.network._update_device(self._device)
